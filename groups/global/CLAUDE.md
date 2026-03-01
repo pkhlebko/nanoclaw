@@ -18,6 +18,8 @@ Your output is sent to the user or group.
 
 You also have `mcp__nanoclaw__send_message` which sends a message immediately while you're still working. This is useful when you want to acknowledge a request before starting longer work.
 
+You have `mcp__nanoclaw__send_media` which sends a file to the user (photo, document, video, audio, animation). Save the file to `/workspace/group/media/` first, then call the tool with the relative path (e.g. `"media/chart.png"`). Use `kind: "photo"` for images, `kind: "document"` for any file.
+
 ### Internal thoughts
 
 If part of your output is internal reasoning rather than something for the user, wrap it in `<internal>` tags:

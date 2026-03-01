@@ -11,12 +11,13 @@ import {
 } from './config.js';
 import { AvailableGroup } from './container-runner.js';
 import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
-import { isValidGroupFolder } from './group-folder.js';
+import { isValidGroupFolder, resolveGroupFolderPath } from './group-folder.js';
 import { logger } from './logger.js';
-import { RegisteredGroup } from './types.js';
+import { OutboundMedia, RegisteredGroup } from './types.js';
 
 export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
+  sendMedia?: (jid: string, media: OutboundMedia) => Promise<void>;
   registeredGroups: () => Record<string, RegisteredGroup>;
   registerGroup: (jid: string, group: RegisteredGroup) => void;
   syncGroupMetadata: (force: boolean) => Promise<void>;
@@ -88,6 +89,48 @@ export function startIpcWatcher(deps: IpcDeps): void {
                   logger.warn(
                     { chatJid: data.chatJid, sourceGroup },
                     'Unauthorized IPC message attempt blocked',
+                  );
+                }
+              } else if (
+                data.type === 'media' &&
+                data.chatJid &&
+                data.kind &&
+                data.workspacePath &&
+                deps.sendMedia
+              ) {
+                const targetGroup = registeredGroups[data.chatJid];
+                if (
+                  isMain ||
+                  (targetGroup && targetGroup.folder === sourceGroup)
+                ) {
+                  const groupDir = resolveGroupFolderPath(sourceGroup);
+                  const absolutePath = path.resolve(
+                    groupDir,
+                    data.workspacePath,
+                  );
+                  // Path traversal guard
+                  const rel = path.relative(groupDir, absolutePath);
+                  if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+                    await deps.sendMedia(data.chatJid, {
+                      kind: data.kind,
+                      path: absolutePath,
+                      caption: data.caption,
+                      filename: data.filename,
+                    });
+                    logger.info(
+                      { chatJid: data.chatJid, kind: data.kind, sourceGroup },
+                      'IPC media sent',
+                    );
+                  } else {
+                    logger.warn(
+                      { workspacePath: data.workspacePath, sourceGroup },
+                      'IPC media path traversal blocked',
+                    );
+                  }
+                } else {
+                  logger.warn(
+                    { chatJid: data.chatJid, sourceGroup },
+                    'Unauthorized IPC media attempt blocked',
                   );
                 }
               }

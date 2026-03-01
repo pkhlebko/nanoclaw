@@ -92,6 +92,13 @@ export interface TaskRunLog {
   error: string | null;
 }
 
+export interface OutboundMedia {
+  kind: 'photo' | 'document' | 'video' | 'audio' | 'voice' | 'animation';
+  path: string; // Absolute path on host
+  caption?: string;
+  filename?: string; // Display name for documents
+}
+
 // --- Channel abstraction ---
 
 export interface Channel {
@@ -105,6 +112,8 @@ export interface Channel {
   setTyping?(jid: string, isTyping: boolean): Promise<void>;
   // Optional: per-chat model override (e.g. Telegram slash commands).
   getModelOverride?(jid: string): string | undefined;
+  // Optional: send media file to user.
+  sendMedia?(jid: string, media: OutboundMedia): Promise<void>;
 }
 
 // Callback type that channels use to deliver inbound messages
