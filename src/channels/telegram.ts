@@ -1,7 +1,7 @@
-import fs from 'fs';
+import fs, { createReadStream } from 'fs';
 import path from 'path';
 
-import { Bot } from 'grammy';
+import { Bot, InputFile } from 'grammy';
 
 import {
   ASSISTANT_NAME,
@@ -17,6 +17,7 @@ import {
   MessageAttachment,
   OnChatMetadata,
   OnInboundMessage,
+  OutboundMedia,
   RegisteredGroup,
 } from '../types.js';
 
@@ -609,6 +610,44 @@ export class TelegramChannel implements Channel {
       await this.bot.api.sendChatAction(numericId, 'typing');
     } catch (err) {
       logger.debug({ jid, err }, 'Failed to send Telegram typing indicator');
+    }
+  }
+
+  async sendMedia(jid: string, media: OutboundMedia): Promise<void> {
+    if (!this.bot) {
+      logger.warn('Telegram bot not initialized');
+      return;
+    }
+    try {
+      const numericId = jid.replace(/^tg:/, '');
+      const file = new InputFile(
+        createReadStream(media.path),
+        media.filename ?? path.basename(media.path),
+      );
+      const opts = media.caption ? { caption: media.caption } : {};
+      switch (media.kind) {
+        case 'photo':
+          await this.bot.api.sendPhoto(numericId, file, opts);
+          break;
+        case 'document':
+          await this.bot.api.sendDocument(numericId, file, opts);
+          break;
+        case 'video':
+          await this.bot.api.sendVideo(numericId, file, opts);
+          break;
+        case 'audio':
+          await this.bot.api.sendAudio(numericId, file, opts);
+          break;
+        case 'voice':
+          await this.bot.api.sendVoice(numericId, file, opts);
+          break;
+        case 'animation':
+          await this.bot.api.sendAnimation(numericId, file, opts);
+          break;
+      }
+      logger.info({ jid, kind: media.kind }, 'Telegram media sent');
+    } catch (err) {
+      logger.error({ jid, err }, 'Failed to send Telegram media');
     }
   }
 }

@@ -144,7 +144,7 @@ A personal Claude assistant accessible via WhatsApp, with minimal custom code.
 ### Scheduler
 - Built-in scheduler runs on the host, spawns containers for task execution
 - Custom `nanoclaw` MCP server (inside container) provides scheduling tools
-- Tools: `schedule_task`, `list_tasks`, `pause_task`, `resume_task`, `cancel_task`, `send_message`
+- Tools: `schedule_task`, `list_tasks`, `pause_task`, `resume_task`, `cancel_task`, `send_message`, `send_media`
 - Tasks stored in SQLite with run history
 - Scheduler loop checks for due tasks every minute
 - Tasks execute Claude Agent SDK in containerized group context

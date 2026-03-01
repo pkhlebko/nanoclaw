@@ -614,6 +614,12 @@ async function main(): Promise<void> {
       if (!channel) throw new Error(`No channel for JID: ${jid}`);
       return channel.sendMessage(jid, text);
     },
+    sendMedia: (jid, media) => {
+      const channel = findChannel(channels, jid);
+      if (!channel?.sendMedia)
+        throw new Error(`Channel for ${jid} does not support media`);
+      return channel.sendMedia(jid, media);
+    },
     registeredGroups: () => registeredGroups,
     registerGroup,
     syncGroupMetadata: (force) =>

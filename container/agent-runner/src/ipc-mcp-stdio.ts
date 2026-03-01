@@ -245,6 +245,31 @@ server.tool(
 );
 
 server.tool(
+  'send_media',
+  'Send a file to the user (image, document, video, audio). Save the file to /workspace/group/media/ first, then call this tool. The file persists in the group workspace.',
+  {
+    workspace_path: z.string().describe('File path relative to /workspace/group/ (e.g. "media/chart.png")'),
+    kind: z.enum(['photo', 'document', 'video', 'audio', 'voice', 'animation'])
+      .describe('photo=image, document=any file, video=mp4, audio=mp3/m4a, voice=ogg, animation=gif'),
+    caption: z.string().optional().describe('Optional caption text'),
+    filename: z.string().optional().describe('Display filename for documents (defaults to basename)'),
+  },
+  async (args) => {
+    writeIpcFile(MESSAGES_DIR, {
+      type: 'media',
+      chatJid,
+      kind: args.kind,
+      workspacePath: args.workspace_path,
+      caption: args.caption,
+      filename: args.filename,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+    return { content: [{ type: 'text' as const, text: 'Media queued for sending.' }] };
+  },
+);
+
+server.tool(
   'register_group',
   `Register a new WhatsApp group so the agent can respond to messages there. Main group only.
 
