@@ -21,6 +21,92 @@ import {
   RegisteredGroup,
 } from '../types.js';
 
+/**
+ * Converts markdown-formatted text to Telegram HTML subset.
+ * Fenced code blocks and inline code are extracted as placeholders first
+ * so their content is never processed by bold/italic regexes.
+ */
+export function markdownToTelegramHtml(text: string): string {
+  const codeBlocks: string[] = [];
+  const inlineCode: string[] = [];
+
+  // Step 1a: extract fenced code blocks
+  let result = text.replace(/```(?:[^\n`]*)?\n([\s\S]*?)```/g, (_m, code: string) => {
+    const esc = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `\x00CB${codeBlocks.push(`<pre><code>${esc}</code></pre>`) - 1}\x00`;
+  });
+
+  // Step 1b: extract inline code spans
+  result = result.replace(/`([^`\n]+)`/g, (_m, code: string) => {
+    const esc = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `\x00IC${inlineCode.push(`<code>${esc}</code>`) - 1}\x00`;
+  });
+
+  // Step 2: HTML-escape remaining plain text
+  result = result.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Step 3: markdown → HTML (bold before italic to avoid ** partial match)
+  result = result.replace(/\*\*(.+?)\*\*/gs, '<b>$1</b>');
+  result = result.replace(/~~(.+?)~~/gs, '<s>$1</s>');
+  result = result.replace(/\*([^*\n]+)\*/g, '<i>$1</i>');
+  result = result.replace(/_([^_\n]+)_/g, '<i>$1</i>');
+  result = result.replace(/^#{1,6} +(.+)$/gm, '<b>$1</b>');
+  result = result.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2">$1</a>');
+
+  // Step 4 & 5: restore placeholders
+  result = result.replace(/\x00IC(\d+)\x00/g, (_m, i) => inlineCode[Number(i)]);
+  result = result.replace(/\x00CB(\d+)\x00/g, (_m, i) => codeBlocks[Number(i)]);
+
+  return result;
+}
+
+/**
+ * Splits a string into chunks of at most maxLen chars.
+ * Prefers double-newline paragraph splits, then single-newline, then hard-split.
+ */
+export function chunkHtml(text: string, maxLen: number): string[] {
+  if (text.length <= maxLen) return [text];
+
+  const chunks: string[] = [];
+
+  function splitLines(segment: string): void {
+    const lines = segment.split('\n');
+    let cur = '';
+    for (const line of lines) {
+      const cand = cur ? cur + '\n' + line : line;
+      if (cand.length <= maxLen) {
+        cur = cand;
+        continue;
+      }
+      if (cur) chunks.push(cur);
+      if (line.length > maxLen) {
+        for (let i = 0; i < line.length; i += maxLen) chunks.push(line.slice(i, i + maxLen));
+        cur = '';
+      } else {
+        cur = line;
+      }
+    }
+    if (cur) chunks.push(cur);
+  }
+
+  const paras = text.split('\n\n');
+  let cur = '';
+  for (const para of paras) {
+    const cand = cur ? cur + '\n\n' + para : para;
+    if (cand.length <= maxLen) {
+      cur = cand;
+      continue;
+    }
+    if (cur) chunks.push(cur);
+    cur = '';
+    if (para.length > maxLen) splitLines(para);
+    else cur = para;
+  }
+  if (cur) chunks.push(cur);
+
+  return chunks;
+}
+
 export interface TelegramChannelOpts {
   onMessage: OnInboundMessage;
   onChatMetadata: OnChatMetadata;
@@ -524,24 +610,29 @@ export class TelegramChannel implements Channel {
       return;
     }
 
-    try {
-      const numericId = jid.replace(/^tg:/, '');
+    const numericId = jid.replace(/^tg:/, '');
+    const MAX_LENGTH = 4096;
+    const html = markdownToTelegramHtml(text);
+    const chunks = chunkHtml(html, MAX_LENGTH);
 
-      // Telegram has a 4096 character limit per message — split if needed
-      const MAX_LENGTH = 4096;
-      if (text.length <= MAX_LENGTH) {
-        await this.bot.api.sendMessage(numericId, text);
-      } else {
-        for (let i = 0; i < text.length; i += MAX_LENGTH) {
-          await this.bot.api.sendMessage(
-            numericId,
-            text.slice(i, i + MAX_LENGTH),
-          );
-        }
+    try {
+      for (const chunk of chunks) {
+        await this.bot.api.sendMessage(numericId, chunk, { parse_mode: 'HTML' });
       }
       logger.info({ jid, length: text.length }, 'Telegram message sent');
     } catch (err) {
-      logger.error({ jid, err }, 'Failed to send Telegram message');
+      logger.error(
+        { jid, err },
+        'Failed to send Telegram message as HTML, retrying as plain text',
+      );
+      try {
+        for (const chunk of chunkHtml(text, MAX_LENGTH)) {
+          await this.bot.api.sendMessage(numericId, chunk);
+        }
+        logger.info({ jid, length: text.length }, 'Telegram message sent (plain text fallback)');
+      } catch (fallbackErr) {
+        logger.error({ jid, err: fallbackErr }, 'Failed to send Telegram message');
+      }
     }
   }
 
