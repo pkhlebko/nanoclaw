@@ -99,6 +99,13 @@ export interface OutboundMedia {
   filename?: string; // Display name for documents
 }
 
+export interface AvailableGroup {
+  jid: string;
+  name: string;
+  lastActivity: string;
+  isRegistered: boolean;
+}
+
 // --- Channel abstraction ---
 
 export interface Channel {

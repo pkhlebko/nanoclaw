@@ -10,14 +10,19 @@ Single Node.js process that connects to WhatsApp, routes messages to Claude Agen
 
 | File | Purpose |
 |------|---------|
-| `src/index.ts` | Orchestrator: state, message loop, agent invocation |
-| `src/channels/whatsapp.ts` | WhatsApp connection, auth, send/receive |
-| `src/ipc.ts` | IPC watcher and task processing |
-| `src/router.ts` | Message formatting and outbound routing |
-| `src/config.ts` | Trigger pattern, paths, intervals |
-| `src/container-runner.ts` | Spawns agent containers with mounts |
-| `src/task-scheduler.ts` | Runs scheduled tasks |
-| `src/db.ts` | SQLite operations |
+| `src/index.ts` | Orchestrator: startup, shutdown, wiring |
+| `src/app-state.ts` | Mutable runtime state and persistence |
+| `src/config.ts` | Trigger pattern, paths, intervals, constants |
+| `src/types.ts` | Shared interfaces (groups, messages, channels) |
+| `src/channels/` | WhatsApp + Telegram connection, auth, send/receive |
+| `src/messaging/` | Message loop, processor, router, trigger helpers |
+| `src/container/` | Spawns agent containers, mounts, runtime abstraction |
+| `src/ipc/` | IPC watcher, task processing, writer, snapshots |
+| `src/db/` | SQLite schema, messages, sessions, tasks, groups, chats |
+| `src/scheduling/` | Scheduled task runner and cron/interval utilities |
+| `src/security/` | Mount validation, allowlist loader, path utilities |
+| `src/groups/` | Group folder validation and concurrent queue |
+| `src/utils/` | Retry policy, audio transcription |
 | `groups/{name}/CLAUDE.md` | Per-group memory (isolated) |
 | `container/skills/agent-browser.md` | Browser automation tool (available to all agents via Bash) |
 

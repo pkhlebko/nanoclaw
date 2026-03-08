@@ -2,10 +2,12 @@ import fs from 'fs';
 import path from 'path';
 
 import { ASSISTANT_NAME } from './config.js';
-import { getAllRegisteredGroups, setRegisteredGroup } from './db-groups.js';
-import { getAllSessions, getMessagesSince, getRouterState, setRouterState } from './db.js';
-import { resolveGroupFolderPath } from './group-folder.js';
-import { GroupQueue } from './group-queue.js';
+import { getAllRegisteredGroups, setRegisteredGroup } from './db/groups.js';
+import { getMessagesSince } from './db/messages.js';
+import { getRouterState, setRouterState } from './db/router-state.js';
+import { getAllSessions } from './db/sessions.js';
+import { resolveGroupFolderPath } from './groups/folder.js';
+import { GroupQueue } from './groups/queue.js';
 import { logger } from './logger.js';
 import { MessageAttachment, RegisteredGroup } from './types.js';
 

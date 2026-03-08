@@ -4,10 +4,10 @@ import path from 'path';
 import { Bot } from 'grammy';
 
 import { ASSISTANT_NAME, MODEL_ALIAS_MAP, TELEGRAM_MAX_FILE_BYTES, TELEGRAM_MAX_IMAGE_BYTES, TRIGGER_PATTERN } from '../config.js';
-import { resolveGroupFolderPath } from '../group-folder.js';
+import { resolveGroupFolderPath } from '../groups/folder.js';
 import { logger } from '../logger.js';
-import { transcribeAudio } from '../transcription.js';
 import { MessageAttachment, OnChatMetadata, OnInboundMessage, RegisteredGroup } from '../types.js';
+import { transcribeAudio } from '../utils/transcription.js';
 
 import { ModelOverrideManager } from './telegram-model-override.js';
 

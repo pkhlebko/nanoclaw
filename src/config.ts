@@ -82,6 +82,9 @@ export const MODEL_OVERRIDE_TIMEOUT = parseInt(process.env.MODEL_OVERRIDE_TIMEOU
 /** Graceful shutdown timeout in milliseconds. */
 export const SHUTDOWN_TIMEOUT_MS = 10_000;
 
+/** Delay before closing a task container after it produces its result. */
+export const TASK_CLOSE_DELAY_MS = 10_000;
+
 /** How long to wait between WhatsApp group metadata syncs. */
 export const WA_GROUP_SYNC_INTERVAL_MS = 86400000; //24 * 60 * 60 * 1000;
 

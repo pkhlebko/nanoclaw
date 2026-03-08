@@ -30,7 +30,7 @@ vi.mock('../logger.js', () => ({
 // Mock transcription
 const mockTranscribeAudio = vi.fn().mockResolvedValue(null);
 
-vi.mock('../transcription.js', () => ({
+vi.mock('../utils/transcription.js', () => ({
   transcribeAudio: (...args: unknown[]) => mockTranscribeAudio(...args),
 }));
 
