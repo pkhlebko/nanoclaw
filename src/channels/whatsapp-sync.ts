@@ -1,7 +1,7 @@
 import { WASocket } from '@whiskeysockets/baileys';
 
 import { WA_GROUP_SYNC_INTERVAL_MS } from '../config.js';
-import { getLastGroupSync, setLastGroupSync, updateChatName } from '../db-chats.js';
+import { getLastGroupSync, setLastGroupSync, updateChatName } from '../db/chats.js';
 import { logger } from '../logger.js';
 
 /**
