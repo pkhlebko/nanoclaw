@@ -18,7 +18,7 @@ export interface IpcDeps {
   registerGroup: (jid: string, group: RegisteredGroup) => void;
   syncGroupMetadata: (force: boolean) => Promise<void>;
   getAvailableGroups: () => AvailableGroup[];
-  writeGroupsSnapshot: (groupFolder: string, isMain: boolean, availableGroups: AvailableGroup[], registeredJids: Set<string>) => void;
+  writeGroupsSnapshot: (groupFolder: string, isMain: boolean, availableGroups: AvailableGroup[]) => void;
 }
 
 let ipcWatcherRunning = false;
@@ -305,7 +305,7 @@ export async function processTaskIpc(
         // Write updated snapshot immediately
         const availableGroups = deps.getAvailableGroups();
 
-        deps.writeGroupsSnapshot(sourceGroup, true, availableGroups, new Set(Object.keys(registeredGroups)));
+        deps.writeGroupsSnapshot(sourceGroup, true, availableGroups);
       } else {
         logger.warn({ sourceGroup }, 'Unauthorized refresh_groups attempt blocked');
       }

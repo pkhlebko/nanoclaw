@@ -1,4 +1,5 @@
 import stylistic from '@stylistic/eslint-plugin';
+import globals from 'globals';
 import importPlugin from 'eslint-plugin-import';
 import tseslint from 'typescript-eslint';
 
@@ -14,6 +15,9 @@ export default tseslint.config(
     files: ['**/*.ts', '**/*.js', '**/*.jsx'],
     extends: [...tseslint.configs.recommended],
     languageOptions: {
+      globals: {
+        ...globals.node,
+      },
       parserOptions: {
         projectService: true,
         tsconfigRootDir: import.meta.dirname,

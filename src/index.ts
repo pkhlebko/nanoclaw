@@ -297,7 +297,7 @@ async function runAgent(
   // Update available groups snapshot (main group only can see all groups)
   const availableGroups = getAvailableGroups();
 
-  writeGroupsSnapshot(group.folder, isMain, availableGroups, new Set(Object.keys(registeredGroups)));
+  writeGroupsSnapshot(group.folder, isMain, availableGroups);
 
   // Wrap onOutput to track session ID from streamed results
   const wrappedOnOutput = onOutput
@@ -560,7 +560,7 @@ async function main(): Promise<void> {
     registerGroup,
     syncGroupMetadata: (force) => whatsapp?.syncGroupMetadata(force) ?? Promise.resolve(),
     getAvailableGroups,
-    writeGroupsSnapshot: (gf, im, ag, rj) => writeGroupsSnapshot(gf, im, ag, rj),
+    writeGroupsSnapshot: (gf, im, ag) => writeGroupsSnapshot(gf, im, ag),
   });
   queue.setProcessMessagesFn(processGroupMessages);
   recoverPendingMessages();

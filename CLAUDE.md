@@ -76,6 +76,22 @@ npm run build        # Compile TypeScript
 ./container/build.sh # Rebuild agent container
 ```
 
+**WARNING: never run `npm run dev` while the systemd service is active.**
+Telegram only allows one `getUpdates` connection per bot token. A second instance causes a 409 Conflict that kills the production polling loop.
+
+To test a startup safely:
+```bash
+systemctl --user stop nanoclaw   # stop first
+npm run dev                       # then test
+systemctl --user start nanoclaw  # restore when done
+```
+
+To verify code without starting the process, use:
+```bash
+npm run build    # compile only
+npm test         # run tests only
+```
+
 After modifying source files or tests, always run:
 
 ```bash
