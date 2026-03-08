@@ -1,19 +1,15 @@
-/* eslint-disable max-lines -- TODO: refactor — extract retry policy and drain logic */
 import { ChildProcess } from 'child_process';
-import fs from 'fs';
-import path from 'path';
 
-import { DATA_DIR, MAX_CONCURRENT_CONTAINERS } from './config.js';
+import { MAX_CONCURRENT_CONTAINERS } from './config.js';
+import { writeIpcClose, writeIpcMessage } from './ipc-writer.js';
 import { logger } from './logger.js';
+import { scheduleRetry } from './retry-policy.js';
 
 interface QueuedTask {
   id: string;
   groupJid: string;
   fn: () => Promise<void>;
 }
-
-const MAX_RETRIES = 5;
-const BASE_RETRY_MS = 5000;
 
 interface GroupState {
   active: boolean;
@@ -162,21 +158,7 @@ export class GroupQueue {
 
     state.idleWaiting = false; // Agent is about to receive work, no longer idle
 
-    const inputDir = path.join(DATA_DIR, 'ipc', state.groupFolder, 'input');
-
-    try {
-      fs.mkdirSync(inputDir, { recursive: true });
-      const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
-      const filepath = path.join(inputDir, filename);
-      const tempPath = `${filepath}.tmp`;
-
-      fs.writeFileSync(tempPath, JSON.stringify({ type: 'message', text }));
-      fs.renameSync(tempPath, filepath);
-
-      return true;
-    } catch {
-      return false;
-    }
+    return writeIpcMessage(state.groupFolder, text);
   }
 
   /**
@@ -187,14 +169,7 @@ export class GroupQueue {
 
     if (!state.active || !state.groupFolder) return;
 
-    const inputDir = path.join(DATA_DIR, 'ipc', state.groupFolder, 'input');
-
-    try {
-      fs.mkdirSync(inputDir, { recursive: true });
-      fs.writeFileSync(path.join(inputDir, '_close'), '');
-    } catch {
-      // ignore
-    }
+    writeIpcClose(state.groupFolder);
   }
 
   private async runForGroup(groupJid: string, reason: 'messages' | 'drain'): Promise<void> {
@@ -215,12 +190,12 @@ export class GroupQueue {
         if (success) {
           state.retryCount = 0;
         } else {
-          this.scheduleRetry(groupJid, state);
+          this.scheduleRetryForGroup(groupJid, state);
         }
       }
     } catch (err) {
       logger.error({ groupJid, err }, 'Error processing messages for group');
-      this.scheduleRetry(groupJid, state);
+      this.scheduleRetryForGroup(groupJid, state);
     } finally {
       state.active = false;
       state.process = null;
@@ -256,27 +231,33 @@ export class GroupQueue {
     }
   }
 
-  private scheduleRetry(groupJid: string, state: GroupState): void {
-    state.retryCount++;
+  private scheduleRetryForGroup(groupJid: string, state: GroupState): void {
+    state.retryCount = scheduleRetry(
+      groupJid,
+      state.retryCount,
+      () => this.enqueueMessageCheck(groupJid),
+      () => this.shuttingDown,
+    );
+  }
 
-    if (state.retryCount > MAX_RETRIES) {
-      logger.error(
-        { groupJid, retryCount: state.retryCount },
-        'Max retries exceeded, dropping messages (will retry on next incoming message)',
-      );
-      state.retryCount = 0;
+  private dispatchWork(groupJid: string, state: GroupState): boolean {
+    // Tasks first (they won't be re-discovered from SQLite like messages)
+    if (state.pendingTasks.length > 0) {
+      const task = state.pendingTasks.shift()!;
 
-      return;
+      this.runTask(groupJid, task).catch((err) => logger.error({ groupJid, taskId: task.id, err }, 'Unhandled error in runTask'));
+
+      return true;
     }
 
-    const delayMs = BASE_RETRY_MS * Math.pow(2, state.retryCount - 1);
+    // Then pending messages
+    if (state.pendingMessages) {
+      this.runForGroup(groupJid, 'drain').catch((err) => logger.error({ groupJid, err }, 'Unhandled error in runForGroup'));
 
-    logger.info({ groupJid, retryCount: state.retryCount, delayMs }, 'Scheduling retry with backoff');
-    setTimeout(() => {
-      if (!this.shuttingDown) {
-        this.enqueueMessageCheck(groupJid);
-      }
-    }, delayMs);
+      return true;
+    }
+
+    return false;
   }
 
   private drainGroup(groupJid: string): void {
@@ -284,24 +265,10 @@ export class GroupQueue {
 
     const state = this.getGroup(groupJid);
 
-    // Tasks first (they won't be re-discovered from SQLite like messages)
-    if (state.pendingTasks.length > 0) {
-      const task = state.pendingTasks.shift()!;
-
-      this.runTask(groupJid, task).catch((err) => logger.error({ groupJid, taskId: task.id, err }, 'Unhandled error in runTask (drain)'));
-
-      return;
+    if (!this.dispatchWork(groupJid, state)) {
+      // Nothing pending for this group; check if other groups are waiting for a slot
+      this.drainWaiting();
     }
-
-    // Then pending messages
-    if (state.pendingMessages) {
-      this.runForGroup(groupJid, 'drain').catch((err) => logger.error({ groupJid, err }, 'Unhandled error in runForGroup (drain)'));
-
-      return;
-    }
-
-    // Nothing pending for this group; check if other groups are waiting for a slot
-    this.drainWaiting();
   }
 
   private drainWaiting(): void {
@@ -309,31 +276,17 @@ export class GroupQueue {
       const nextJid = this.waitingGroups.shift()!;
       const state = this.getGroup(nextJid);
 
-      // Prioritize tasks over messages
-      if (state.pendingTasks.length > 0) {
-        const task = state.pendingTasks.shift()!;
-
-        this.runTask(nextJid, task).catch((err) =>
-          logger.error({ groupJid: nextJid, taskId: task.id, err }, 'Unhandled error in runTask (waiting)'),
-        );
-      } else if (state.pendingMessages) {
-        this.runForGroup(nextJid, 'drain').catch((err) =>
-          logger.error({ groupJid: nextJid, err }, 'Unhandled error in runForGroup (waiting)'),
-        );
-      }
-      // If neither pending, skip this group
+      this.dispatchWork(nextJid, state);
     }
   }
 
   async shutdown(_gracePeriodMs: number): Promise<void> {
     this.shuttingDown = true;
 
-    // Count active containers but don't kill them — they'll finish on their own
-    // via idle timeout or container timeout. The --rm flag cleans them up on exit.
-    // This prevents WhatsApp reconnection restarts from killing working agents.
+    // Don't kill active containers — they finish on their own; --rm cleans them up on exit.
     const activeContainers: string[] = [];
 
-    for (const [jid, state] of this.groups) {
+    for (const [, state] of this.groups) {
       if (state.process && !state.process.killed && state.containerName) {
         activeContainers.push(state.containerName);
       }
