@@ -22,9 +22,9 @@ The entire codebase should be something you can read and understand. One Node.js
 
 Instead of application-level permission systems trying to prevent agents from accessing things, agents run in actual Linux containers. The isolation is at the OS level. Agents can only see what's explicitly mounted. Bash access is safe because commands run inside the container, not on your Mac.
 
-### Built for One User
+### Built for User
 
-This isn't a framework or a platform. It's working software for my specific needs. I use WhatsApp and Email, so it supports WhatsApp and Email. I don't use Telegram, so it doesn't support Telegram. I add the integrations I actually want, not every possible integration.
+This isn't a framework or a platform. It's working software for my specific needs. I use Telegram and Email, so it supports Telegram and Email. I don't use WhatsApp, so it doesn't support WhatsApp. I add the integrations I actually want, not every possible integration.
 
 ### Customization = Code Changes
 
@@ -66,7 +66,7 @@ The project uses Docker by default (cross-platform). For macOS users who prefer 
 
 ## Vision
 
-A personal Claude assistant accessible via WhatsApp, with minimal custom code.
+A personal Claude assistant accessible via Telegram, with minimal custom code.
 
 **Core components:**
 - **Claude Agent SDK** as the core agent

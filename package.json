@@ -16,7 +16,11 @@
     "prepare": "husky",
     "setup": "tsx setup/index.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "prettier": "prettier --write \"src/**/*.ts\"",
+    "fix": "npm run lint:fix && npm run prettier"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
@@ -32,14 +36,19 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@stylistic/eslint-plugin": "^5.10.0",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.0",
     "@types/qrcode-terminal": "^0.12.2",
     "@vitest/coverage-v8": "^4.0.18",
+    "eslint": "^9.39.4",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
     "husky": "^9.1.7",
     "prettier": "^3.8.1",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
+    "typescript-eslint": "^8.56.1",
     "vitest": "^4.0.18"
   },
   "engines": {

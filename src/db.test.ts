@@ -1,17 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import {
-  _initTestDatabase,
-  createTask,
-  deleteTask,
-  getAllChats,
-  getMessagesSince,
-  getNewMessages,
-  getTaskById,
-  storeChatMetadata,
-  storeMessage,
-  updateTask,
-} from './db.js';
+import { getAllChats, storeChatMetadata } from './db-chats.js';
+import { createTask, deleteTask, getTaskById, updateTask } from './db-tasks.js';
+import { _initTestDatabase, getMessagesSince, getNewMessages, storeMessage } from './db.js';
 
 beforeEach(() => {
   _initTestDatabase();
@@ -53,11 +44,8 @@ describe('storeMessage', () => {
       timestamp: '2024-01-01T00:00:01.000Z',
     });
 
-    const messages = getMessagesSince(
-      'group@g.us',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = getMessagesSince('group@g.us', '2024-01-01T00:00:00.000Z', 'Andy');
+
     expect(messages).toHaveLength(1);
     expect(messages[0].id).toBe('msg-1');
     expect(messages[0].sender).toBe('123@s.whatsapp.net');
@@ -77,11 +65,8 @@ describe('storeMessage', () => {
       timestamp: '2024-01-01T00:00:04.000Z',
     });
 
-    const messages = getMessagesSince(
-      'group@g.us',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = getMessagesSince('group@g.us', '2024-01-01T00:00:00.000Z', 'Andy');
+
     expect(messages).toHaveLength(0);
   });
 
@@ -99,11 +84,8 @@ describe('storeMessage', () => {
     });
 
     // Message is stored (we can retrieve it — is_from_me doesn't affect retrieval)
-    const messages = getMessagesSince(
-      'group@g.us',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = getMessagesSince('group@g.us', '2024-01-01T00:00:00.000Z', 'Andy');
+
     expect(messages).toHaveLength(1);
   });
 
@@ -128,11 +110,8 @@ describe('storeMessage', () => {
       timestamp: '2024-01-01T00:00:01.000Z',
     });
 
-    const messages = getMessagesSince(
-      'group@g.us',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = getMessagesSince('group@g.us', '2024-01-01T00:00:00.000Z', 'Andy');
+
     expect(messages).toHaveLength(1);
     expect(messages[0].content).toBe('updated');
   });
@@ -180,28 +159,23 @@ describe('getMessagesSince', () => {
   });
 
   it('returns messages after the given timestamp', () => {
-    const msgs = getMessagesSince(
-      'group@g.us',
-      '2024-01-01T00:00:02.000Z',
-      'Andy',
-    );
+    const msgs = getMessagesSince('group@g.us', '2024-01-01T00:00:02.000Z', 'Andy');
+
     // Should exclude m1, m2 (before/at timestamp), m3 (bot message)
     expect(msgs).toHaveLength(1);
     expect(msgs[0].content).toBe('third');
   });
 
   it('excludes bot messages via is_bot_message flag', () => {
-    const msgs = getMessagesSince(
-      'group@g.us',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const msgs = getMessagesSince('group@g.us', '2024-01-01T00:00:00.000Z', 'Andy');
     const botMsgs = msgs.filter((m) => m.content === 'bot reply');
+
     expect(botMsgs).toHaveLength(0);
   });
 
   it('returns all non-bot messages when sinceTimestamp is empty', () => {
     const msgs = getMessagesSince('group@g.us', '', 'Andy');
+
     // 3 user messages (bot message excluded)
     expect(msgs).toHaveLength(3);
   });
@@ -216,11 +190,8 @@ describe('getMessagesSince', () => {
       content: 'Andy: old bot reply',
       timestamp: '2024-01-01T00:00:05.000Z',
     });
-    const msgs = getMessagesSince(
-      'group@g.us',
-      '2024-01-01T00:00:04.000Z',
-      'Andy',
-    );
+    const msgs = getMessagesSince('group@g.us', '2024-01-01T00:00:04.000Z', 'Andy');
+
     expect(msgs).toHaveLength(0);
   });
 });
@@ -268,22 +239,16 @@ describe('getNewMessages', () => {
   });
 
   it('returns new messages across multiple groups', () => {
-    const { messages, newTimestamp } = getNewMessages(
-      ['group1@g.us', 'group2@g.us'],
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const { messages, newTimestamp } = getNewMessages(['group1@g.us', 'group2@g.us'], '2024-01-01T00:00:00.000Z', 'Andy');
+
     // Excludes bot message, returns 3 user messages
     expect(messages).toHaveLength(3);
     expect(newTimestamp).toBe('2024-01-01T00:00:04.000Z');
   });
 
   it('filters by timestamp', () => {
-    const { messages } = getNewMessages(
-      ['group1@g.us', 'group2@g.us'],
-      '2024-01-01T00:00:02.000Z',
-      'Andy',
-    );
+    const { messages } = getNewMessages(['group1@g.us', 'group2@g.us'], '2024-01-01T00:00:02.000Z', 'Andy');
+
     // Only g1 msg2 (after ts, not bot)
     expect(messages).toHaveLength(1);
     expect(messages[0].content).toBe('g1 msg2');
@@ -291,6 +256,7 @@ describe('getNewMessages', () => {
 
   it('returns empty for no registered groups', () => {
     const { messages, newTimestamp } = getNewMessages([], '', 'Andy');
+
     expect(messages).toHaveLength(0);
     expect(newTimestamp).toBe('');
   });
@@ -302,6 +268,7 @@ describe('storeChatMetadata', () => {
   it('stores chat with JID as default name', () => {
     storeChatMetadata('group@g.us', '2024-01-01T00:00:00.000Z');
     const chats = getAllChats();
+
     expect(chats).toHaveLength(1);
     expect(chats[0].jid).toBe('group@g.us');
     expect(chats[0].name).toBe('group@g.us');
@@ -310,6 +277,7 @@ describe('storeChatMetadata', () => {
   it('stores chat with explicit name', () => {
     storeChatMetadata('group@g.us', '2024-01-01T00:00:00.000Z', 'My Group');
     const chats = getAllChats();
+
     expect(chats[0].name).toBe('My Group');
   });
 
@@ -317,6 +285,7 @@ describe('storeChatMetadata', () => {
     storeChatMetadata('group@g.us', '2024-01-01T00:00:00.000Z');
     storeChatMetadata('group@g.us', '2024-01-01T00:00:01.000Z', 'Updated Name');
     const chats = getAllChats();
+
     expect(chats).toHaveLength(1);
     expect(chats[0].name).toBe('Updated Name');
   });
@@ -325,6 +294,7 @@ describe('storeChatMetadata', () => {
     storeChatMetadata('group@g.us', '2024-01-01T00:00:05.000Z');
     storeChatMetadata('group@g.us', '2024-01-01T00:00:01.000Z');
     const chats = getAllChats();
+
     expect(chats[0].last_message_time).toBe('2024-01-01T00:00:05.000Z');
   });
 });
@@ -347,6 +317,7 @@ describe('task CRUD', () => {
     });
 
     const task = getTaskById('task-1');
+
     expect(task).toBeDefined();
     expect(task!.prompt).toBe('do something');
     expect(task!.status).toBe('active');

@@ -1,12 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { ASSISTANT_NAME, TRIGGER_PATTERN } from './config.js';
-import {
-  escapeXml,
-  formatMessages,
-  formatOutbound,
-  stripInternalTags,
-} from './router.js';
+import { escapeXml, formatMessages, formatOutbound, stripInternalTags } from './router.js';
 import { NewMessage } from './types.js';
 
 function makeMsg(overrides: Partial<NewMessage> = {}): NewMessage {
@@ -41,9 +36,7 @@ describe('escapeXml', () => {
   });
 
   it('handles multiple special characters together', () => {
-    expect(escapeXml('a & b < c > d "e"')).toBe(
-      'a &amp; b &lt; c &gt; d &quot;e&quot;',
-    );
+    expect(escapeXml('a & b < c > d "e"')).toBe('a &amp; b &lt; c &gt; d &quot;e&quot;');
   });
 
   it('passes through strings with no special chars', () => {
@@ -60,11 +53,8 @@ describe('escapeXml', () => {
 describe('formatMessages', () => {
   it('formats a single message as XML', () => {
     const result = formatMessages([makeMsg()]);
-    expect(result).toBe(
-      '<messages>\n' +
-        '<message sender="Alice" time="2024-01-01T00:00:00.000Z">hello</message>\n' +
-        '</messages>',
-    );
+
+    expect(result).toBe('<messages>\n' + '<message sender="Alice" time="2024-01-01T00:00:00.000Z">hello</message>\n' + '</messages>');
   });
 
   it('formats multiple messages', () => {
@@ -78,6 +68,7 @@ describe('formatMessages', () => {
       makeMsg({ id: '2', sender_name: 'Bob', content: 'hey', timestamp: 't2' }),
     ];
     const result = formatMessages(msgs);
+
     expect(result).toContain('sender="Alice"');
     expect(result).toContain('sender="Bob"');
     expect(result).toContain('>hi</message>');
@@ -86,20 +77,19 @@ describe('formatMessages', () => {
 
   it('escapes special characters in sender names', () => {
     const result = formatMessages([makeMsg({ sender_name: 'A & B <Co>' })]);
+
     expect(result).toContain('sender="A &amp; B &lt;Co&gt;"');
   });
 
   it('escapes special characters in content', () => {
-    const result = formatMessages([
-      makeMsg({ content: '<script>alert("xss")</script>' }),
-    ]);
-    expect(result).toContain(
-      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;',
-    );
+    const result = formatMessages([makeMsg({ content: '<script>alert("xss")</script>' })]);
+
+    expect(result).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
   });
 
   it('handles empty array', () => {
     const result = formatMessages([]);
+
     expect(result).toBe('<messages>\n\n</messages>');
   });
 });
@@ -146,21 +136,15 @@ describe('TRIGGER_PATTERN', () => {
 
 describe('stripInternalTags', () => {
   it('strips single-line internal tags', () => {
-    expect(stripInternalTags('hello <internal>secret</internal> world')).toBe(
-      'hello  world',
-    );
+    expect(stripInternalTags('hello <internal>secret</internal> world')).toBe('hello  world');
   });
 
   it('strips multi-line internal tags', () => {
-    expect(
-      stripInternalTags('hello <internal>\nsecret\nstuff\n</internal> world'),
-    ).toBe('hello  world');
+    expect(stripInternalTags('hello <internal>\nsecret\nstuff\n</internal> world')).toBe('hello  world');
   });
 
   it('strips multiple internal tag blocks', () => {
-    expect(
-      stripInternalTags('<internal>a</internal>hello<internal>b</internal>'),
-    ).toBe('hello');
+    expect(stripInternalTags('<internal>a</internal>hello<internal>b</internal>')).toBe('hello');
   });
 
   it('returns empty string when text is only internal tags', () => {
@@ -178,9 +162,7 @@ describe('formatOutbound', () => {
   });
 
   it('strips internal tags from remaining text', () => {
-    expect(
-      formatOutbound('<internal>thinking</internal>The answer is 42'),
-    ).toBe('The answer is 42');
+    expect(formatOutbound('<internal>thinking</internal>The answer is 42')).toBe('The answer is 42');
   });
 });
 
@@ -189,49 +171,49 @@ describe('formatOutbound', () => {
 describe('trigger gating (requiresTrigger interaction)', () => {
   // Replicates the exact logic from processGroupMessages and startMessageLoop:
   //   if (!isMainGroup && group.requiresTrigger !== false) { check trigger }
-  function shouldRequireTrigger(
-    isMainGroup: boolean,
-    requiresTrigger: boolean | undefined,
-  ): boolean {
+  function shouldRequireTrigger(isMainGroup: boolean, requiresTrigger: boolean | undefined): boolean {
     return !isMainGroup && requiresTrigger !== false;
   }
 
-  function shouldProcess(
-    isMainGroup: boolean,
-    requiresTrigger: boolean | undefined,
-    messages: NewMessage[],
-  ): boolean {
+  function shouldProcess(isMainGroup: boolean, requiresTrigger: boolean | undefined, messages: NewMessage[]): boolean {
     if (!shouldRequireTrigger(isMainGroup, requiresTrigger)) return true;
+
     return messages.some((m) => TRIGGER_PATTERN.test(m.content.trim()));
   }
 
   it('main group always processes (no trigger needed)', () => {
     const msgs = [makeMsg({ content: 'hello no trigger' })];
+
     expect(shouldProcess(true, undefined, msgs)).toBe(true);
   });
 
   it('main group processes even with requiresTrigger=true', () => {
     const msgs = [makeMsg({ content: 'hello no trigger' })];
+
     expect(shouldProcess(true, true, msgs)).toBe(true);
   });
 
   it('non-main group with requiresTrigger=undefined requires trigger (defaults to true)', () => {
     const msgs = [makeMsg({ content: 'hello no trigger' })];
+
     expect(shouldProcess(false, undefined, msgs)).toBe(false);
   });
 
   it('non-main group with requiresTrigger=true requires trigger', () => {
     const msgs = [makeMsg({ content: 'hello no trigger' })];
+
     expect(shouldProcess(false, true, msgs)).toBe(false);
   });
 
   it('non-main group with requiresTrigger=true processes when trigger present', () => {
     const msgs = [makeMsg({ content: `@${ASSISTANT_NAME} do something` })];
+
     expect(shouldProcess(false, true, msgs)).toBe(true);
   });
 
   it('non-main group with requiresTrigger=false always processes (no trigger needed)', () => {
     const msgs = [makeMsg({ content: 'hello no trigger' })];
+
     expect(shouldProcess(false, false, msgs)).toBe(true);
   });
 });
