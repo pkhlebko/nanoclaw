@@ -12,6 +12,7 @@ vi.mock('./logger.js', () => ({
 
 // Mock child_process — store the mock fn so tests can configure it
 const mockExecSync = vi.fn();
+
 vi.mock('child_process', () => ({
   execSync: (...args: unknown[]) => mockExecSync(...args),
 }));
@@ -34,6 +35,7 @@ beforeEach(() => {
 describe('readonlyMountArgs', () => {
   it('returns -v flag with :ro suffix', () => {
     const args = readonlyMountArgs('/host/path', '/container/path');
+
     expect(args).toEqual(['-v', '/host/path:/container/path:ro']);
   });
 });

@@ -2,6 +2,7 @@ import { Channel, MessageAttachment, NewMessage } from './types.js';
 
 export function escapeXml(s: string): string {
   if (!s) return '';
+
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -14,6 +15,7 @@ export function formatMessages(messages: NewMessage[]): string {
     (m) =>
       `<message sender="${escapeXml(m.sender_name)}" time="${m.timestamp}">${escapeXml(m.content)}</message>`,
   );
+
   return `<messages>\n${lines.join('\n')}\n</messages>`;
 }
 
@@ -29,7 +31,9 @@ export function stripInternalTags(text: string): string {
 
 export function formatOutbound(rawText: string): string {
   const text = stripInternalTags(rawText);
+
   if (!text) return '';
+
   return text;
 }
 
@@ -39,7 +43,9 @@ export function routeOutbound(
   text: string,
 ): Promise<void> {
   const channel = channels.find((c) => c.ownsJid(jid) && c.isConnected());
+
   if (!channel) throw new Error(`No channel for JID: ${jid}`);
+
   return channel.sendMessage(jid, text);
 }
 

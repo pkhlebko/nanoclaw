@@ -48,6 +48,7 @@ describe('task scheduler', () => {
     await vi.advanceTimersByTimeAsync(10);
 
     const task = getTaskById('task-invalid-folder');
+
     expect(task?.status).toBe('paused');
   });
 });

@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
+import { TelegramChannel } from './channels/telegram.js';
+import { WhatsAppChannel } from './channels/whatsapp.js';
 import {
   ASSISTANT_NAME,
   DEFAULT_MODEL,
@@ -12,8 +14,6 @@ import {
   TELEGRAM_ONLY,
   TRIGGER_PATTERN,
 } from './config.js';
-import { TelegramChannel } from './channels/telegram.js';
-import { WhatsAppChannel } from './channels/whatsapp.js';
 import {
   ContainerOutput,
   runContainerAgent,
@@ -39,9 +39,10 @@ import {
   storeChatMetadata,
   storeMessage,
 } from './db.js';
-import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
+import { GroupQueue } from './group-queue.js';
 import { startIpcWatcher } from './ipc.js';
+import { logger } from './logger.js';
 import {
   extractAttachments,
   findChannel,
@@ -55,7 +56,6 @@ import {
   NewMessage,
   RegisteredGroup,
 } from './types.js';
-import { logger } from './logger.js';
 
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
@@ -74,12 +74,14 @@ const pendingAttachments = new Map<string, MessageAttachment[]>();
 function loadState(): void {
   lastTimestamp = getRouterState('last_timestamp') || '';
   const agentTs = getRouterState('last_agent_timestamp');
+
   try {
     lastAgentTimestamp = agentTs ? JSON.parse(agentTs) : {};
   } catch {
     logger.warn('Corrupted last_agent_timestamp in DB, resetting');
     lastAgentTimestamp = {};
   }
+
   sessions = getAllSessions();
   registeredGroups = getAllRegisteredGroups();
   logger.info(
@@ -95,6 +97,7 @@ function saveState(): void {
 
 function registerGroup(jid: string, group: RegisteredGroup): void {
   let groupDir: string;
+
   try {
     groupDir = resolveGroupFolderPath(group.folder);
   } catch (err) {
@@ -102,6 +105,7 @@ function registerGroup(jid: string, group: RegisteredGroup): void {
       { jid, folder: group.folder, err },
       'Rejecting group registration with invalid folder',
     );
+
     return;
   }
 
@@ -149,6 +153,7 @@ export function _setRegisteredGroups(
  */
 function parseModelFlag(prompt: string): { model?: string; prompt: string } {
   const match = prompt.match(/^--model\s+(\S+)\s*/);
+
   if (!match) {
     return { model: undefined, prompt };
   }
@@ -166,11 +171,14 @@ function parseModelFlag(prompt: string): { model?: string; prompt: string } {
  */
 async function processGroupMessages(chatJid: string): Promise<boolean> {
   const group = registeredGroups[chatJid];
+
   if (!group) return true;
 
   const channel = findChannel(channels, chatJid);
+
   if (!channel) {
     console.log(`Warning: no channel owns JID ${chatJid}, skipping messages`);
+
     return true;
   }
 
@@ -190,6 +198,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     const hasTrigger = missedMessages.some((m) =>
       TRIGGER_PATTERN.test(m.content.trim()),
     );
+
     if (!hasTrigger) return true;
   }
 
@@ -204,17 +213,19 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   const messagesForFormat =
     strippedContent !== lastMsg.content.trim()
       ? [
-          ...missedMessages.slice(0, -1),
-          { ...lastMsg, content: strippedContent },
-        ]
+        ...missedMessages.slice(0, -1),
+        { ...lastMsg, content: strippedContent },
+      ]
       : missedMessages;
   const prompt = formatMessages(messagesForFormat);
   const attachments = pendingAttachments.get(chatJid);
+
   pendingAttachments.delete(chatJid);
 
   // Advance cursor so the piping path in startMessageLoop won't re-fetch
   // these messages. Save the old cursor so we can roll back on error.
   const previousCursor = lastAgentTimestamp[chatJid] || '';
+
   lastAgentTimestamp[chatJid] =
     missedMessages[missedMessages.length - 1].timestamp;
   saveState();
@@ -233,6 +244,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
 
   const resetIdleTimer = () => {
     if (idleTimer) clearTimeout(idleTimer);
+
     idleTimer = setTimeout(() => {
       logger.debug(
         { group: group.name },
@@ -261,14 +273,17 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
             : JSON.stringify(result.result);
         // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
         const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
+
         logger.info(
           { group: group.name },
           `Agent output: ${raw.slice(0, 200)}`,
         );
+
         if (text) {
           await channel.sendMessage(chatJid, text);
           outputSentToUser = true;
         }
+
         // Only reset idle timer on actual results, not session-update markers (result: null)
         resetIdleTimer();
       }
@@ -284,6 +299,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   );
 
   await channel.setTyping?.(chatJid, false);
+
   if (idleTimer) clearTimeout(idleTimer);
 
   if (output === 'error' || hadError) {
@@ -294,8 +310,10 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         { group: group.name },
         'Agent error after output was sent, skipping cursor rollback to prevent duplicates',
       );
+
       return true;
     }
+
     // Roll back cursor so retries can re-process these messages
     lastAgentTimestamp[chatJid] = previousCursor;
     saveState();
@@ -303,6 +321,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
       { group: group.name },
       'Agent error, rolled back message cursor for retry',
     );
+
     return false;
   }
 
@@ -322,6 +341,7 @@ async function runAgent(
 
   // Update tasks snapshot for container to read (filtered by group)
   const tasks = getAllTasks();
+
   writeTasksSnapshot(
     group.folder,
     isMain,
@@ -338,6 +358,7 @@ async function runAgent(
 
   // Update available groups snapshot (main group only can see all groups)
   const availableGroups = getAvailableGroups();
+
   writeGroupsSnapshot(
     group.folder,
     isMain,
@@ -348,12 +369,13 @@ async function runAgent(
   // Wrap onOutput to track session ID from streamed results
   const wrappedOnOutput = onOutput
     ? async (output: ContainerOutput) => {
-        if (output.newSessionId) {
-          sessions[group.folder] = output.newSessionId;
-          setSession(group.folder, output.newSessionId);
-        }
-        await onOutput(output);
+      if (output.newSessionId) {
+        sessions[group.folder] = output.newSessionId;
+        setSession(group.folder, output.newSessionId);
       }
+
+      await onOutput(output);
+    }
     : undefined;
 
   try {
@@ -384,12 +406,14 @@ async function runAgent(
         { group: group.name, error: output.error },
         'Container agent error',
       );
+
       return 'error';
     }
 
     return 'success';
   } catch (err) {
     logger.error({ group: group.name, err }, 'Agent error');
+
     return 'error';
   }
 }
@@ -397,8 +421,10 @@ async function runAgent(
 async function startMessageLoop(): Promise<void> {
   if (messageLoopRunning) {
     logger.debug('Message loop already running, skipping duplicate start');
+
     return;
   }
+
   messageLoopRunning = true;
 
   logger.info(`NanoClaw running (trigger: @${ASSISTANT_NAME})`);
@@ -421,8 +447,10 @@ async function startMessageLoop(): Promise<void> {
 
         // Deduplicate by group
         const messagesByGroup = new Map<string, NewMessage[]>();
+
         for (const msg of messages) {
           const existing = messagesByGroup.get(msg.chat_jid);
+
           if (existing) {
             existing.push(msg);
           } else {
@@ -432,9 +460,11 @@ async function startMessageLoop(): Promise<void> {
 
         for (const [chatJid, groupMessages] of messagesByGroup) {
           const group = registeredGroups[chatJid];
+
           if (!group) continue;
 
           const channel = findChannel(channels, chatJid);
+
           if (!channel) {
             console.log(
               `Warning: no channel owns JID ${chatJid}, skipping messages`,
@@ -452,6 +482,7 @@ async function startMessageLoop(): Promise<void> {
             const hasTrigger = groupMessages.some((m) =>
               TRIGGER_PATTERN.test(m.content.trim()),
             );
+
             if (!hasTrigger) continue;
           }
 
@@ -500,6 +531,7 @@ async function startMessageLoop(): Promise<void> {
               );
               queue.closeStdin(chatJid);
             }
+
             queue.enqueueMessageCheck(chatJid);
           }
         }
@@ -507,6 +539,7 @@ async function startMessageLoop(): Promise<void> {
     } catch (err) {
       logger.error({ err }, 'Error in message loop');
     }
+
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
   }
 }
@@ -519,6 +552,7 @@ function recoverPendingMessages(): void {
   for (const [chatJid, group] of Object.entries(registeredGroups)) {
     const sinceTimestamp = lastAgentTimestamp[chatJid] || '';
     const pending = getMessagesSince(chatJid, sinceTimestamp, ASSISTANT_NAME);
+
     if (pending.length > 0) {
       logger.info(
         { group: group.name, pendingCount: pending.length },
@@ -547,6 +581,7 @@ async function main(): Promise<void> {
     for (const ch of channels) await ch.disconnect();
     process.exit(0);
   };
+
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
 
@@ -554,6 +589,7 @@ async function main(): Promise<void> {
   const channelOpts = {
     onMessage: (_chatJid: string, msg: NewMessage) => {
       storeMessage(msg);
+
       if (msg.attachments?.length) {
         logger.info(
           {
@@ -564,6 +600,7 @@ async function main(): Promise<void> {
           'Caching attachments from inbound message',
         );
         const existing = pendingAttachments.get(msg.chat_jid) || [];
+
         existing.push(...msg.attachments);
         pendingAttachments.set(msg.chat_jid, existing);
       }
@@ -581,6 +618,7 @@ async function main(): Promise<void> {
   // Create and connect channels
   if (TELEGRAM_BOT_TOKEN) {
     const telegram = new TelegramChannel(TELEGRAM_BOT_TOKEN, channelOpts);
+
     channels.push(telegram);
     await telegram.connect();
   }
@@ -600,24 +638,32 @@ async function main(): Promise<void> {
       queue.registerProcess(groupJid, proc, containerName, groupFolder),
     sendMessage: async (jid, rawText) => {
       const channel = findChannel(channels, jid);
+
       if (!channel) {
         console.log(`Warning: no channel owns JID ${jid}, cannot send message`);
+
         return;
       }
+
       const text = formatOutbound(rawText);
+
       if (text) await channel.sendMessage(jid, text);
     },
   });
   startIpcWatcher({
     sendMessage: (jid, text) => {
       const channel = findChannel(channels, jid);
+
       if (!channel) throw new Error(`No channel for JID: ${jid}`);
+
       return channel.sendMessage(jid, text);
     },
     sendMedia: (jid, media) => {
       const channel = findChannel(channels, jid);
+
       if (!channel?.sendMedia)
         throw new Error(`Channel for ${jid} does not support media`);
+
       return channel.sendMedia(jid, media);
     },
     registeredGroups: () => registeredGroups,

@@ -83,6 +83,7 @@ describe('schedule_task authorization', () => {
 
     // Verify task was created in DB for the other group
     const allTasks = getAllTasks();
+
     expect(allTasks.length).toBe(1);
     expect(allTasks[0].group_folder).toBe('other-group');
   });
@@ -102,6 +103,7 @@ describe('schedule_task authorization', () => {
     );
 
     const allTasks = getAllTasks();
+
     expect(allTasks.length).toBe(1);
     expect(allTasks[0].group_folder).toBe('other-group');
   });
@@ -121,6 +123,7 @@ describe('schedule_task authorization', () => {
     );
 
     const allTasks = getAllTasks();
+
     expect(allTasks.length).toBe(0);
   });
 
@@ -139,6 +142,7 @@ describe('schedule_task authorization', () => {
     );
 
     const allTasks = getAllTasks();
+
     expect(allTasks.length).toBe(0);
   });
 });
@@ -393,6 +397,7 @@ describe('IPC message authorization', () => {
     registeredGroups: Record<string, RegisteredGroup>,
   ): boolean {
     const targetGroup = registeredGroups[targetChatJid];
+
     return isMain || (!!targetGroup && targetGroup.folder === sourceGroup);
   }
 
@@ -448,6 +453,7 @@ describe('schedule_task schedule types', () => {
     );
 
     const tasks = getAllTasks();
+
     expect(tasks).toHaveLength(1);
     expect(tasks[0].schedule_type).toBe('cron');
     expect(tasks[0].next_run).toBeTruthy();
@@ -491,10 +497,12 @@ describe('schedule_task schedule types', () => {
     );
 
     const tasks = getAllTasks();
+
     expect(tasks).toHaveLength(1);
     expect(tasks[0].schedule_type).toBe('interval');
     // next_run should be ~1 hour from now
     const nextRun = new Date(tasks[0].next_run!).getTime();
+
     expect(nextRun).toBeGreaterThanOrEqual(before + 3600000 - 1000);
     expect(nextRun).toBeLessThanOrEqual(Date.now() + 3600000 + 1000);
   });
@@ -570,6 +578,7 @@ describe('schedule_task context_mode', () => {
     );
 
     const tasks = getAllTasks();
+
     expect(tasks[0].context_mode).toBe('group');
   });
 
@@ -589,6 +598,7 @@ describe('schedule_task context_mode', () => {
     );
 
     const tasks = getAllTasks();
+
     expect(tasks[0].context_mode).toBe('isolated');
   });
 
@@ -608,6 +618,7 @@ describe('schedule_task context_mode', () => {
     );
 
     const tasks = getAllTasks();
+
     expect(tasks[0].context_mode).toBe('isolated');
   });
 
@@ -626,6 +637,7 @@ describe('schedule_task context_mode', () => {
     );
 
     const tasks = getAllTasks();
+
     expect(tasks[0].context_mode).toBe('isolated');
   });
 });
@@ -649,6 +661,7 @@ describe('register_group success', () => {
 
     // Verify group was registered in DB
     const group = getRegisteredGroup('new@g.us');
+
     expect(group).toBeDefined();
     expect(group!.name).toBe('New Group');
     expect(group!.folder).toBe('new-group');

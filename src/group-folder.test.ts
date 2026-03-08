@@ -24,6 +24,7 @@ describe('group folder validation', () => {
 
   it('resolves safe paths under groups directory', () => {
     const resolved = resolveGroupFolderPath('family-chat');
+
     expect(resolved.endsWith(`${path.sep}groups${path.sep}family-chat`)).toBe(
       true,
     );
@@ -31,6 +32,7 @@ describe('group folder validation', () => {
 
   it('resolves safe paths under data ipc directory', () => {
     const resolved = resolveGroupIpcPath('family-chat');
+
     expect(
       resolved.endsWith(`${path.sep}data${path.sep}ipc${path.sep}family-chat`),
     ).toBe(true);

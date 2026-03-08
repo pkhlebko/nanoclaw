@@ -1,6 +1,7 @@
 import { ChildProcess } from 'child_process';
-import { CronExpressionParser } from 'cron-parser';
 import fs from 'fs';
+
+import { CronExpressionParser } from 'cron-parser';
 
 import {
   ASSISTANT_NAME,
@@ -21,8 +22,8 @@ import {
   updateTask,
   updateTaskAfterRun,
 } from './db.js';
-import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
+import { GroupQueue } from './group-queue.js';
 import { logger } from './logger.js';
 import { RegisteredGroup, ScheduledTask } from './types.js';
 
@@ -45,10 +46,12 @@ async function runTask(
 ): Promise<void> {
   const startTime = Date.now();
   let groupDir: string;
+
   try {
     groupDir = resolveGroupFolderPath(task.group_folder);
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
+
     // Stop retry churn for malformed legacy rows.
     updateTask(task.id, { status: 'paused' });
     logger.error(
@@ -63,8 +66,10 @@ async function runTask(
       result: null,
       error,
     });
+
     return;
   }
+
   fs.mkdirSync(groupDir, { recursive: true });
 
   logger.info(
@@ -90,12 +95,14 @@ async function runTask(
       result: null,
       error: `Group not found: ${task.group_folder}`,
     });
+
     return;
   }
 
   // Update tasks snapshot for container to read (filtered by group)
   const isMain = task.group_folder === MAIN_GROUP_FOLDER;
   const tasks = getAllTasks();
+
   writeTasksSnapshot(
     task.group_folder,
     isMain,
@@ -126,6 +133,7 @@ async function runTask(
 
   const scheduleClose = () => {
     if (closeTimer) return; // already scheduled
+
     closeTimer = setTimeout(() => {
       logger.debug({ taskId: task.id }, 'Closing task container after result');
       deps.queue.closeStdin(task.chat_jid);
@@ -153,9 +161,11 @@ async function runTask(
           await deps.sendMessage(task.chat_jid, streamedOutput.result);
           scheduleClose();
         }
+
         if (streamedOutput.status === 'success') {
           deps.queue.notifyIdle(task.chat_jid);
         }
+
         if (streamedOutput.status === 'error') {
           error = streamedOutput.error || 'Unknown error';
         }
@@ -177,6 +187,7 @@ async function runTask(
     );
   } catch (err) {
     if (closeTimer) clearTimeout(closeTimer);
+
     error = err instanceof Error ? err.message : String(err);
     logger.error({ taskId: task.id, error }, 'Task failed');
   }
@@ -193,13 +204,16 @@ async function runTask(
   });
 
   let nextRun: string | null = null;
+
   if (task.schedule_type === 'cron') {
     const interval = CronExpressionParser.parse(task.schedule_value, {
       tz: TIMEZONE,
     });
+
     nextRun = interval.next().toISOString();
   } else if (task.schedule_type === 'interval') {
     const ms = parseInt(task.schedule_value, 10);
+
     nextRun = new Date(Date.now() + ms).toISOString();
   }
   // 'once' tasks have no next run
@@ -209,6 +223,7 @@ async function runTask(
     : result
       ? result.slice(0, 200)
       : 'Completed';
+
   updateTaskAfterRun(task.id, nextRun, resultSummary);
 }
 
@@ -217,14 +232,17 @@ let schedulerRunning = false;
 export function startSchedulerLoop(deps: SchedulerDependencies): void {
   if (schedulerRunning) {
     logger.debug('Scheduler loop already running, skipping duplicate start');
+
     return;
   }
+
   schedulerRunning = true;
   logger.info('Scheduler loop started');
 
   const loop = async () => {
     try {
       const dueTasks = getDueTasks();
+
       if (dueTasks.length > 0) {
         logger.info({ count: dueTasks.length }, 'Found due tasks');
       }
@@ -232,6 +250,7 @@ export function startSchedulerLoop(deps: SchedulerDependencies): void {
       for (const task of dueTasks) {
         // Re-check task status in case it was paused/cancelled
         const currentTask = getTaskById(task.id);
+
         if (!currentTask || currentTask.status !== 'active') {
           continue;
         }

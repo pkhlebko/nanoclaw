@@ -8,8 +8,6 @@
  */
 import fs from 'fs';
 import path from 'path';
-import pino from 'pino';
-import qrcode from 'qrcode-terminal';
 import readline from 'readline';
 
 import makeWASocket, {
@@ -19,6 +17,9 @@ import makeWASocket, {
   makeCacheableSignalKeyStore,
   useMultiFileAuthState,
 } from '@whiskeysockets/baileys';
+import pino from 'pino';
+import qrcode from 'qrcode-terminal';
+
 
 const AUTH_DIR = './store/auth';
 const QR_FILE = './store/qr-data.txt';
@@ -37,6 +38,7 @@ function askQuestion(prompt: string): Promise<string> {
     input: process.stdin,
     output: process.stdout,
   });
+
   return new Promise((resolve) => {
     rl.question(prompt, (answer) => {
       rl.close();
@@ -65,6 +67,7 @@ async function connectSocket(
       { err },
       'Failed to fetch latest WA Web version, using default',
     );
+
     return { version: undefined };
   });
   const sock = makeWASocket({
@@ -84,6 +87,7 @@ async function connectSocket(
     setTimeout(async () => {
       try {
         const code = await sock.requestPairingCode(phoneNumber!);
+
         console.log(`\n🔗 Your pairing code: ${code}\n`);
         console.log('  1. Open WhatsApp on your phone');
         console.log('  2. Tap Settings → Linked Devices → Link a Device');
@@ -135,10 +139,12 @@ async function connectSocket(
 
     if (connection === 'open') {
       fs.writeFileSync(STATUS_FILE, 'authenticated');
+
       // Clean up QR file now that we're connected
       try {
         fs.unlinkSync(QR_FILE);
       } catch {}
+
       console.log('\n✓ Successfully authenticated with WhatsApp!');
       console.log('  Credentials saved to store/auth/');
       console.log('  You can now start the NanoClaw service.\n');
@@ -158,11 +164,13 @@ async function authenticate(): Promise<void> {
   try {
     fs.unlinkSync(QR_FILE);
   } catch {}
+
   try {
     fs.unlinkSync(STATUS_FILE);
   } catch {}
 
   let phoneNumber = phoneArg;
+
   if (usePairingCode && !phoneNumber) {
     phoneNumber = await askQuestion(
       'Enter your phone number (with country code, no + or spaces, e.g. 14155551234): ',

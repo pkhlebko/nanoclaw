@@ -9,6 +9,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+
 import pino from 'pino';
 
 import { MOUNT_ALLOWLIST_PATH } from './config.js';
@@ -69,6 +70,7 @@ export function loadMountAllowlist(): MountAllowlist | null {
         'Mount allowlist not found - additional mounts will be BLOCKED. ' +
           'Create the file to enable additional mounts.',
       );
+
       return null;
     }
 
@@ -92,6 +94,7 @@ export function loadMountAllowlist(): MountAllowlist | null {
     const mergedBlockedPatterns = [
       ...new Set([...DEFAULT_BLOCKED_PATTERNS, ...allowlist.blockedPatterns]),
     ];
+
     allowlist.blockedPatterns = mergedBlockedPatterns;
 
     cachedAllowlist = allowlist;
@@ -114,6 +117,7 @@ export function loadMountAllowlist(): MountAllowlist | null {
       },
       'Failed to load mount allowlist - additional mounts will be BLOCKED',
     );
+
     return null;
   }
 }
@@ -123,12 +127,15 @@ export function loadMountAllowlist(): MountAllowlist | null {
  */
 function expandPath(p: string): string {
   const homeDir = process.env.HOME || os.homedir();
+
   if (p.startsWith('~/')) {
     return path.join(homeDir, p.slice(2));
   }
+
   if (p === '~') {
     return homeDir;
   }
+
   return path.resolve(p);
 }
 
@@ -188,6 +195,7 @@ function findAllowedRoot(
 
     // Check if realPath is under realRoot
     const relative = path.relative(realRoot, realPath);
+
     if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
       return root;
     }
@@ -271,6 +279,7 @@ export function validateMount(
     realPath,
     allowlist.blockedPatterns,
   );
+
   if (blockedMatch !== null) {
     return {
       allowed: false,
@@ -280,6 +289,7 @@ export function validateMount(
 
   // Check if under an allowed root
   const allowedRoot = findAllowedRoot(realPath, allowlist.allowedRoots);
+
   if (allowedRoot === null) {
     return {
       allowed: false,

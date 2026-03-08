@@ -35,24 +35,30 @@ let ipcWatcherRunning = false;
 export function startIpcWatcher(deps: IpcDeps): void {
   if (ipcWatcherRunning) {
     logger.debug('IPC watcher already running, skipping duplicate start');
+
     return;
   }
+
   ipcWatcherRunning = true;
 
   const ipcBaseDir = path.join(DATA_DIR, 'ipc');
+
   fs.mkdirSync(ipcBaseDir, { recursive: true });
 
   const processIpcFiles = async () => {
     // Scan all group IPC directories (identity determined by directory)
     let groupFolders: string[];
+
     try {
       groupFolders = fs.readdirSync(ipcBaseDir).filter((f) => {
         const stat = fs.statSync(path.join(ipcBaseDir, f));
+
         return stat.isDirectory() && f !== 'errors';
       });
     } catch (err) {
       logger.error({ err }, 'Error reading IPC base directory');
       setTimeout(processIpcFiles, IPC_POLL_INTERVAL);
+
       return;
     }
 
@@ -69,13 +75,17 @@ export function startIpcWatcher(deps: IpcDeps): void {
           const messageFiles = fs
             .readdirSync(messagesDir)
             .filter((f) => f.endsWith('.json'));
+
           for (const file of messageFiles) {
             const filePath = path.join(messagesDir, file);
+
             try {
               const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+
               if (data.type === 'message' && data.chatJid && data.text) {
                 // Authorization: verify this group can send to this chatJid
                 const targetGroup = registeredGroups[data.chatJid];
+
                 if (
                   isMain ||
                   (targetGroup && targetGroup.folder === sourceGroup)
@@ -99,6 +109,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
                 deps.sendMedia
               ) {
                 const targetGroup = registeredGroups[data.chatJid];
+
                 if (
                   isMain ||
                   (targetGroup && targetGroup.folder === sourceGroup)
@@ -110,6 +121,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
                   );
                   // Path traversal guard
                   const rel = path.relative(groupDir, absolutePath);
+
                   if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
                     await deps.sendMedia(data.chatJid, {
                       kind: data.kind,
@@ -134,6 +146,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
                   );
                 }
               }
+
               fs.unlinkSync(filePath);
             } catch (err) {
               logger.error(
@@ -141,6 +154,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
                 'Error processing IPC message',
               );
               const errorDir = path.join(ipcBaseDir, 'errors');
+
               fs.mkdirSync(errorDir, { recursive: true });
               fs.renameSync(
                 filePath,
@@ -162,10 +176,13 @@ export function startIpcWatcher(deps: IpcDeps): void {
           const taskFiles = fs
             .readdirSync(tasksDir)
             .filter((f) => f.endsWith('.json'));
+
           for (const file of taskFiles) {
             const filePath = path.join(tasksDir, file);
+
             try {
               const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+
               // Pass source group identity to processTaskIpc for authorization
               await processTaskIpc(data, sourceGroup, isMain, deps);
               fs.unlinkSync(filePath);
@@ -175,6 +192,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
                 'Error processing IPC task',
               );
               const errorDir = path.join(ipcBaseDir, 'errors');
+
               fs.mkdirSync(errorDir, { recursive: true });
               fs.renameSync(
                 filePath,
@@ -254,11 +272,13 @@ export async function processTaskIpc(
         const scheduleType = data.schedule_type as 'cron' | 'interval' | 'once';
 
         let nextRun: string | null = null;
+
         if (scheduleType === 'cron') {
           try {
             const interval = CronExpressionParser.parse(data.schedule_value, {
               tz: TIMEZONE,
             });
+
             nextRun = interval.next().toISOString();
           } catch {
             logger.warn(
@@ -269,6 +289,7 @@ export async function processTaskIpc(
           }
         } else if (scheduleType === 'interval') {
           const ms = parseInt(data.schedule_value, 10);
+
           if (isNaN(ms) || ms <= 0) {
             logger.warn(
               { scheduleValue: data.schedule_value },
@@ -276,9 +297,11 @@ export async function processTaskIpc(
             );
             break;
           }
+
           nextRun = new Date(Date.now() + ms).toISOString();
         } else if (scheduleType === 'once') {
           const scheduled = new Date(data.schedule_value);
+
           if (isNaN(scheduled.getTime())) {
             logger.warn(
               { scheduleValue: data.schedule_value },
@@ -286,6 +309,7 @@ export async function processTaskIpc(
             );
             break;
           }
+
           nextRun = scheduled.toISOString();
         }
 
@@ -294,6 +318,7 @@ export async function processTaskIpc(
           data.context_mode === 'group' || data.context_mode === 'isolated'
             ? data.context_mode
             : 'isolated';
+
         createTask({
           id: taskId,
           group_folder: targetFolder,
@@ -311,11 +336,13 @@ export async function processTaskIpc(
           'Task created via IPC',
         );
       }
+
       break;
 
     case 'pause_task':
       if (data.taskId) {
         const task = getTaskById(data.taskId);
+
         if (task && (isMain || task.group_folder === sourceGroup)) {
           updateTask(data.taskId, { status: 'paused' });
           logger.info(
@@ -329,11 +356,13 @@ export async function processTaskIpc(
           );
         }
       }
+
       break;
 
     case 'resume_task':
       if (data.taskId) {
         const task = getTaskById(data.taskId);
+
         if (task && (isMain || task.group_folder === sourceGroup)) {
           updateTask(data.taskId, { status: 'active' });
           logger.info(
@@ -347,11 +376,13 @@ export async function processTaskIpc(
           );
         }
       }
+
       break;
 
     case 'cancel_task':
       if (data.taskId) {
         const task = getTaskById(data.taskId);
+
         if (task && (isMain || task.group_folder === sourceGroup)) {
           deleteTask(data.taskId);
           logger.info(
@@ -365,6 +396,7 @@ export async function processTaskIpc(
           );
         }
       }
+
       break;
 
     case 'refresh_groups':
@@ -377,6 +409,7 @@ export async function processTaskIpc(
         await deps.syncGroupMetadata(true);
         // Write updated snapshot immediately
         const availableGroups = deps.getAvailableGroups();
+
         deps.writeGroupsSnapshot(
           sourceGroup,
           true,
@@ -389,6 +422,7 @@ export async function processTaskIpc(
           'Unauthorized refresh_groups attempt blocked',
         );
       }
+
       break;
 
     case 'register_group':
@@ -400,6 +434,7 @@ export async function processTaskIpc(
         );
         break;
       }
+
       if (data.jid && data.name && data.folder && data.trigger) {
         if (!isValidGroupFolder(data.folder)) {
           logger.warn(
@@ -408,6 +443,7 @@ export async function processTaskIpc(
           );
           break;
         }
+
         deps.registerGroup(data.jid, {
           name: data.name,
           folder: data.folder,
@@ -422,6 +458,7 @@ export async function processTaskIpc(
           'Invalid register_group request - missing required fields',
         );
       }
+
       break;
 
     default:

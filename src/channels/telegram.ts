@@ -33,12 +33,14 @@ export function markdownToTelegramHtml(text: string): string {
   // Step 1a: extract fenced code blocks
   let result = text.replace(/```(?:[^\n`]*)?\n([\s\S]*?)```/g, (_m, code: string) => {
     const esc = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
     return `\x00CB${codeBlocks.push(`<pre><code>${esc}</code></pre>`) - 1}\x00`;
   });
 
   // Step 1b: extract inline code spans
   result = result.replace(/`([^`\n]+)`/g, (_m, code: string) => {
     const esc = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
     return `\x00IC${inlineCode.push(`<code>${esc}</code>`) - 1}\x00`;
   });
 
@@ -72,13 +74,17 @@ export function chunkHtml(text: string, maxLen: number): string[] {
   function splitLines(segment: string): void {
     const lines = segment.split('\n');
     let cur = '';
+
     for (const line of lines) {
       const cand = cur ? cur + '\n' + line : line;
+
       if (cand.length <= maxLen) {
         cur = cand;
         continue;
       }
+
       if (cur) chunks.push(cur);
+
       if (line.length > maxLen) {
         for (let i = 0; i < line.length; i += maxLen) chunks.push(line.slice(i, i + maxLen));
         cur = '';
@@ -86,22 +92,29 @@ export function chunkHtml(text: string, maxLen: number): string[] {
         cur = line;
       }
     }
+
     if (cur) chunks.push(cur);
   }
 
   const paras = text.split('\n\n');
   let cur = '';
+
   for (const para of paras) {
     const cand = cur ? cur + '\n\n' + para : para;
+
     if (cand.length <= maxLen) {
       cur = cand;
       continue;
     }
+
     if (cur) chunks.push(cur);
+
     cur = '';
+
     if (para.length > maxLen) splitLines(para);
     else cur = para;
   }
+
   if (cur) chunks.push(cur);
 
   return chunks;
@@ -138,9 +151,11 @@ export class TelegramChannel implements Channel {
       return (ctx) => {
         const chatJid = `tg:${ctx.chat.id}`;
         const group = this.opts.registeredGroups()[chatJid];
+
         if (!group) return;
 
         const model = MODEL_ALIAS_MAP[alias];
+
         this.setModelOverride(chatJid, model);
         ctx.reply(`Switched to ${displayName} for 30 min.`);
       };
@@ -152,6 +167,7 @@ export class TelegramChannel implements Channel {
     this.bot.command('default', (ctx) => {
       const chatJid = `tg:${ctx.chat.id}`;
       const group = this.opts.registeredGroups()[chatJid];
+
       if (!group) return;
 
       this.clearModelOverride(chatJid);
@@ -209,6 +225,7 @@ export class TelegramChannel implements Channel {
       // Telegram @mentions (e.g., @andy_ai_bot) won't match TRIGGER_PATTERN
       // (e.g., ^@Andy\b), so we prepend the trigger when the bot is @mentioned.
       const botUsername = ctx.me?.username?.toLowerCase();
+
       if (botUsername) {
         const entities = ctx.message.entities || [];
         const isBotMentioned = entities.some((entity) => {
@@ -216,10 +233,13 @@ export class TelegramChannel implements Channel {
             const mentionText = content
               .substring(entity.offset, entity.offset + entity.length)
               .toLowerCase();
+
             return mentionText === `@${botUsername}`;
           }
+
           return false;
         });
+
         if (isBotMentioned && !TRIGGER_PATTERN.test(content)) {
           content = `@${ASSISTANT_NAME} ${content}`;
         }
@@ -228,6 +248,7 @@ export class TelegramChannel implements Channel {
       // Store chat metadata for discovery
       const isGroup =
         ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+
       this.opts.onChatMetadata(
         chatJid,
         timestamp,
@@ -238,11 +259,13 @@ export class TelegramChannel implements Channel {
 
       // Only deliver full message for registered groups
       const group = this.opts.registeredGroups()[chatJid];
+
       if (!group) {
         logger.debug(
           { chatJid, chatName },
           'Message from unregistered Telegram chat',
         );
+
         return;
       }
 
@@ -267,6 +290,7 @@ export class TelegramChannel implements Channel {
     const storeNonText = (ctx: any, placeholder: string) => {
       const chatJid = `tg:${ctx.chat.id}`;
       const group = this.opts.registeredGroups()[chatJid];
+
       if (!group) return;
 
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
@@ -279,6 +303,7 @@ export class TelegramChannel implements Channel {
 
       const isGroup =
         ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+
       this.opts.onChatMetadata(
         chatJid,
         timestamp,
@@ -300,6 +325,7 @@ export class TelegramChannel implements Channel {
     this.bot.on('message:photo', async (ctx) => {
       const chatJid = `tg:${ctx.chat.id}`;
       const group = this.opts.registeredGroups()[chatJid];
+
       if (!group) return;
 
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
@@ -309,10 +335,11 @@ export class TelegramChannel implements Channel {
         ctx.from?.id?.toString() ||
         'Unknown';
       const caption = ctx.message.caption ? ` ${ctx.message.caption}` : '';
-      let content = `[Photo]${caption}`;
+      const content = `[Photo]${caption}`;
 
       const isGroup =
         ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+
       this.opts.onChatMetadata(
         chatJid,
         timestamp,
@@ -322,10 +349,12 @@ export class TelegramChannel implements Channel {
       );
 
       let attachments: MessageAttachment[] | undefined;
+
       try {
         const photos = ctx.message.photo;
         const largest = photos[photos.length - 1];
         const buffer = await this.downloadFile(largest.file_id);
+
         if (buffer) {
           const ext = 'jpg';
           const savedName = `${Date.now()}-photo.${ext}`;
@@ -333,10 +362,12 @@ export class TelegramChannel implements Channel {
             resolveGroupFolderPath(group.folder),
             'media',
           );
+
           fs.mkdirSync(mediaDir, { recursive: true });
           fs.writeFileSync(path.join(mediaDir, savedName), buffer);
 
           const MAX_BASE64_BYTES = 5 * 1024 * 1024;
+
           if (buffer.length <= MAX_BASE64_BYTES) {
             attachments = [
               {
@@ -375,6 +406,7 @@ export class TelegramChannel implements Channel {
     this.bot.on('message:video', async (ctx) => {
       const chatJid = `tg:${ctx.chat.id}`;
       const group = this.opts.registeredGroups()[chatJid];
+
       if (!group) return;
 
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
@@ -384,10 +416,11 @@ export class TelegramChannel implements Channel {
         ctx.from?.id?.toString() ||
         'Unknown';
       const caption = ctx.message.caption ? ` ${ctx.message.caption}` : '';
-      let content = `[Video]${caption}`;
+      const content = `[Video]${caption}`;
 
       const isGroup =
         ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+
       this.opts.onChatMetadata(
         chatJid,
         timestamp,
@@ -399,9 +432,11 @@ export class TelegramChannel implements Channel {
       let attachments: MessageAttachment[] | undefined;
       const video = ctx.message.video;
       const MAX_FILE_BYTES = 20 * 1024 * 1024;
+
       if (video && (!video.file_size || video.file_size <= MAX_FILE_BYTES)) {
         try {
           const buffer = await this.downloadFile(video.file_id);
+
           if (buffer) {
             const ext = video.mime_type?.split('/')[1] || 'mp4';
             const savedName = `${Date.now()}-video.${ext}`;
@@ -409,6 +444,7 @@ export class TelegramChannel implements Channel {
               resolveGroupFolderPath(group.folder),
               'media',
             );
+
             fs.mkdirSync(mediaDir, { recursive: true });
             fs.writeFileSync(path.join(mediaDir, savedName), buffer);
             attachments = [
@@ -438,6 +474,7 @@ export class TelegramChannel implements Channel {
     this.bot.on('message:voice', async (ctx) => {
       const chatJid = `tg:${ctx.chat.id}`;
       const group = this.opts.registeredGroups()[chatJid];
+
       if (!group) return;
 
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
@@ -448,6 +485,7 @@ export class TelegramChannel implements Channel {
         'Unknown';
       const isGroup =
         ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+
       this.opts.onChatMetadata(
         chatJid,
         timestamp,
@@ -457,14 +495,18 @@ export class TelegramChannel implements Channel {
       );
 
       let content = '[Voice message]';
+
       try {
         const file = await this.bot!.api.getFile(ctx.message.voice.file_id);
+
         if (file.file_path) {
           const url = `https://api.telegram.org/file/bot${this.botToken}/${file.file_path}`;
           const resp = await fetch(url);
+
           if (resp.ok) {
             const buffer = Buffer.from(await resp.arrayBuffer());
             const transcript = await transcribeAudio(buffer);
+
             if (transcript) {
               content = `[Voice: ${transcript}]`;
             }
@@ -489,6 +531,7 @@ export class TelegramChannel implements Channel {
     this.bot.on('message:document', async (ctx) => {
       const chatJid = `tg:${ctx.chat.id}`;
       const group = this.opts.registeredGroups()[chatJid];
+
       if (!group) return;
 
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
@@ -500,10 +543,11 @@ export class TelegramChannel implements Channel {
       const doc = ctx.message.document;
       const originalName = doc?.file_name || 'file';
       const caption = ctx.message.caption ? ` ${ctx.message.caption}` : '';
-      let content = `[Document: ${originalName}]${caption}`;
+      const content = `[Document: ${originalName}]${caption}`;
 
       const isGroup =
         ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+
       this.opts.onChatMetadata(
         chatJid,
         timestamp,
@@ -514,9 +558,11 @@ export class TelegramChannel implements Channel {
 
       let attachments: MessageAttachment[] | undefined;
       const MAX_FILE_BYTES = 20 * 1024 * 1024;
+
       if (!doc?.file_size || doc.file_size <= MAX_FILE_BYTES) {
         try {
           const buffer = await this.downloadFile(doc!.file_id);
+
           if (buffer) {
             const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
             const savedName = `${Date.now()}-${safeName}`;
@@ -524,6 +570,7 @@ export class TelegramChannel implements Channel {
               resolveGroupFolderPath(group.folder),
               'media',
             );
+
             fs.mkdirSync(mediaDir, { recursive: true });
             fs.writeFileSync(path.join(mediaDir, savedName), buffer);
 
@@ -539,6 +586,7 @@ export class TelegramChannel implements Channel {
               mime as (typeof imageTypes)[number],
             );
             const MAX_BASE64_BYTES = 5 * 1024 * 1024;
+
             if (isImage && buffer.length <= MAX_BASE64_BYTES) {
               attachments = [
                 {
@@ -576,6 +624,7 @@ export class TelegramChannel implements Channel {
     });
     this.bot.on('message:sticker', (ctx) => {
       const emoji = ctx.message.sticker?.emoji || '';
+
       storeNonText(ctx, `[Sticker ${emoji}]`);
     });
     this.bot.on('message:location', (ctx) => storeNonText(ctx, '[Location]'));
@@ -596,7 +645,7 @@ export class TelegramChannel implements Channel {
           );
           console.log(`\n  Telegram bot: @${botInfo.username}`);
           console.log(
-            `  Send /chatid to the bot to get a chat's registration ID\n`,
+            '  Send /chatid to the bot to get a chat\'s registration ID\n',
           );
           resolve();
         },
@@ -607,6 +656,7 @@ export class TelegramChannel implements Channel {
   async sendMessage(jid: string, text: string): Promise<void> {
     if (!this.bot) {
       logger.warn('Telegram bot not initialized');
+
       return;
     }
 
@@ -625,6 +675,7 @@ export class TelegramChannel implements Channel {
         { jid, err },
         'Failed to send Telegram message as HTML, retrying as plain text',
       );
+
       try {
         for (const chunk of chunkHtml(text, MAX_LENGTH)) {
           await this.bot.api.sendMessage(numericId, chunk);
@@ -667,22 +718,29 @@ export class TelegramChannel implements Channel {
 
   private clearModelOverride(chatJid: string): void {
     const timer = this.modelTimers.get(chatJid);
+
     if (timer) clearTimeout(timer);
+
     this.modelTimers.delete(chatJid);
     this.modelOverrides.delete(chatJid);
   }
 
   private async downloadFile(fileId: string): Promise<Buffer | null> {
     const file = await this.bot!.api.getFile(fileId);
+
     if (!file.file_path) return null;
+
     const url = `https://api.telegram.org/file/bot${this.botToken}/${file.file_path}`;
     const resp = await fetch(url);
+
     if (!resp.ok) return null;
+
     return Buffer.from(await resp.arrayBuffer());
   }
 
   private resetModelTimer(chatJid: string): void {
     const existing = this.modelTimers.get(chatJid);
+
     if (existing) clearTimeout(existing);
 
     const timer = setTimeout(() => {
@@ -696,8 +754,10 @@ export class TelegramChannel implements Channel {
 
   async setTyping(jid: string, isTyping: boolean): Promise<void> {
     if (!this.bot || !isTyping) return;
+
     try {
       const numericId = jid.replace(/^tg:/, '');
+
       await this.bot.api.sendChatAction(numericId, 'typing');
     } catch (err) {
       logger.debug({ jid, err }, 'Failed to send Telegram typing indicator');
@@ -707,8 +767,10 @@ export class TelegramChannel implements Channel {
   async sendMedia(jid: string, media: OutboundMedia): Promise<void> {
     if (!this.bot) {
       logger.warn('Telegram bot not initialized');
+
       return;
     }
+
     try {
       const numericId = jid.replace(/^tg:/, '');
       const file = new InputFile(
@@ -716,6 +778,7 @@ export class TelegramChannel implements Channel {
         media.filename ?? path.basename(media.path),
       );
       const opts = media.caption ? { caption: media.caption } : {};
+
       switch (media.kind) {
         case 'photo':
           await this.bot.api.sendPhoto(numericId, file, opts);

@@ -68,6 +68,7 @@ export function cleanupOrphans(): void {
       { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf-8' },
     );
     const orphans = output.trim().split('\n').filter(Boolean);
+
     for (const name of orphans) {
       try {
         execSync(stopContainer(name), { stdio: 'pipe' });
@@ -75,6 +76,7 @@ export function cleanupOrphans(): void {
         /* already stopped */
       }
     }
+
     if (orphans.length > 0) {
       logger.info(
         { count: orphans.length, names: orphans },

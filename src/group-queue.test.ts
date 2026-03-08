@@ -11,6 +11,7 @@ vi.mock('./config.js', () => ({
 // Mock fs operations used by sendMessage/closeStdin
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
+
   return {
     ...actual,
     default: {
@@ -46,6 +47,7 @@ describe('GroupQueue', () => {
       // Simulate async work
       await new Promise((resolve) => setTimeout(resolve, 100));
       concurrentCount--;
+
       return true;
     });
 
@@ -74,6 +76,7 @@ describe('GroupQueue', () => {
       maxActive = Math.max(maxActive, activeCount);
       await new Promise<void>((resolve) => completionCallbacks.push(resolve));
       activeCount--;
+
       return true;
     });
 
@@ -111,7 +114,9 @@ describe('GroupQueue', () => {
           resolveFirst = resolve;
         });
       }
+
       executionOrder.push('messages');
+
       return true;
     });
 
@@ -125,6 +130,7 @@ describe('GroupQueue', () => {
     const taskFn = vi.fn(async () => {
       executionOrder.push('task');
     });
+
     queue.enqueueTask('group1@g.us', 'task-1', taskFn);
     queue.enqueueMessageCheck('group1@g.us');
 
@@ -145,6 +151,7 @@ describe('GroupQueue', () => {
 
     const processMessages = vi.fn(async () => {
       callCount++;
+
       return false; // failure
     });
 
@@ -170,6 +177,7 @@ describe('GroupQueue', () => {
 
   it('prevents new enqueues after shutdown', async () => {
     const processMessages = vi.fn(async () => true);
+
     queue.setProcessMessagesFn(processMessages);
 
     await queue.shutdown(1000);
@@ -187,6 +195,7 @@ describe('GroupQueue', () => {
 
     const processMessages = vi.fn(async () => {
       callCount++;
+
       return false; // always fail
     });
 
@@ -200,6 +209,7 @@ describe('GroupQueue', () => {
 
     // Retry 1: 5000ms, Retry 2: 10000ms, Retry 3: 20000ms, Retry 4: 40000ms, Retry 5: 80000ms
     const retryDelays = [5000, 10000, 20000, 40000, 80000];
+
     for (let i = 0; i < retryDelays.length; i++) {
       await vi.advanceTimersByTimeAsync(retryDelays[i] + 10);
       expect(callCount).toBe(i + 2);
@@ -207,6 +217,7 @@ describe('GroupQueue', () => {
 
     // After 5 retries (6 total calls), should stop — no more retries
     const countAfterMaxRetries = callCount;
+
     await vi.advanceTimersByTimeAsync(200000); // Wait a long time
     expect(callCount).toBe(countAfterMaxRetries);
   });
@@ -220,6 +231,7 @@ describe('GroupQueue', () => {
     const processMessages = vi.fn(async (groupJid: string) => {
       processed.push(groupJid);
       await new Promise<void>((resolve) => completionCallbacks.push(resolve));
+
       return true;
     });
 
@@ -253,6 +265,7 @@ describe('GroupQueue', () => {
       await new Promise<void>((resolve) => {
         resolveProcess = resolve;
       });
+
       return true;
     });
 
@@ -272,6 +285,7 @@ describe('GroupQueue', () => {
 
     // Enqueue a task while container is active but NOT idle
     const taskFn = vi.fn(async () => {});
+
     queue.enqueueTask('group1@g.us', 'task-1', taskFn);
 
     // _close should NOT have been written (container is working, not idle)
@@ -279,6 +293,7 @@ describe('GroupQueue', () => {
     const closeWrites = writeFileSync.mock.calls.filter(
       (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
     );
+
     expect(closeWrites).toHaveLength(0);
 
     resolveProcess!();
@@ -293,6 +308,7 @@ describe('GroupQueue', () => {
       await new Promise<void>((resolve) => {
         resolveProcess = resolve;
       });
+
       return true;
     });
 
@@ -313,15 +329,18 @@ describe('GroupQueue', () => {
 
     // Clear previous writes, then enqueue a task
     const writeFileSync = vi.mocked(fs.default.writeFileSync);
+
     writeFileSync.mockClear();
 
     const taskFn = vi.fn(async () => {});
+
     queue.enqueueTask('group1@g.us', 'task-1', taskFn);
 
     // _close SHOULD have been written (container is idle)
     const closeWrites = writeFileSync.mock.calls.filter(
       (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
     );
+
     expect(closeWrites).toHaveLength(1);
 
     resolveProcess!();
@@ -336,6 +355,7 @@ describe('GroupQueue', () => {
       await new Promise<void>((resolve) => {
         resolveProcess = resolve;
       });
+
       return true;
     });
 
@@ -357,14 +377,17 @@ describe('GroupQueue', () => {
 
     // Task enqueued after message reset — should NOT preempt (agent is working)
     const writeFileSync = vi.mocked(fs.default.writeFileSync);
+
     writeFileSync.mockClear();
 
     const taskFn = vi.fn(async () => {});
+
     queue.enqueueTask('group1@g.us', 'task-1', taskFn);
 
     const closeWrites = writeFileSync.mock.calls.filter(
       (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
     );
+
     expect(closeWrites).toHaveLength(0);
 
     resolveProcess!();
@@ -392,6 +415,7 @@ describe('GroupQueue', () => {
 
     // sendMessage should return false — user messages must not go to task containers
     const result = queue.sendMessage('group1@g.us', 'hello');
+
     expect(result).toBe(false);
 
     resolveTask!();
@@ -406,6 +430,7 @@ describe('GroupQueue', () => {
       await new Promise<void>((resolve) => {
         resolveProcess = resolve;
       });
+
       return true;
     });
 
@@ -424,14 +449,17 @@ describe('GroupQueue', () => {
     );
 
     const writeFileSync = vi.mocked(fs.default.writeFileSync);
+
     writeFileSync.mockClear();
 
     const taskFn = vi.fn(async () => {});
+
     queue.enqueueTask('group1@g.us', 'task-1', taskFn);
 
     let closeWrites = writeFileSync.mock.calls.filter(
       (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
     );
+
     expect(closeWrites).toHaveLength(0);
 
     // Now container becomes idle — should preempt because task is pending

@@ -42,6 +42,13 @@ npm run build        # Compile TypeScript
 ./container/build.sh # Rebuild agent container
 ```
 
+After modifying source files or tests, always run:
+
+```bash
+npm run fix          # Auto-fix lint issues + format with prettier (do this first)
+npm run lint         # Check remaining lint issues that need manual fixes
+```
+
 Service management:
 ```bash
 # macOS (launchd)

@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
+
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 // --- Mocks ---
 
@@ -30,6 +31,7 @@ vi.mock('../db.js', () => ({
 // Mock fs
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
+
   return {
     ...actual,
     default: {
@@ -65,6 +67,7 @@ function createFakeSocket() {
     // Expose the event emitter for triggering events in tests
     _ev: ev,
   };
+
   return sock;
 }
 
@@ -98,8 +101,9 @@ vi.mock('@whiskeysockets/baileys', () => {
   };
 });
 
-import { WhatsAppChannel, WhatsAppChannelOpts } from './whatsapp.js';
 import { getLastGroupSync, updateChatName, setLastGroupSync } from '../db.js';
+
+import { WhatsAppChannel, WhatsAppChannelOpts } from './whatsapp.js';
 
 // --- Test helpers ---
 
@@ -158,9 +162,11 @@ describe('WhatsAppChannel', () => {
    */
   async function connectChannel(channel: WhatsAppChannel): Promise<void> {
     const p = channel.connect();
+
     // Flush microtasks so connectInternal completes its await and registers handlers
     await new Promise((r) => setTimeout(r, 0));
     triggerConnection('open');
+
     return p;
   }
 
@@ -170,22 +176,26 @@ describe('WhatsAppChannel', () => {
     it('connects with fetched version', async () => {
       const opts = createTestOpts();
       const channel = new WhatsAppChannel(opts);
+
       await connectChannel(channel);
 
       const { fetchLatestWaWebVersion } =
         await import('@whiskeysockets/baileys');
+
       expect(fetchLatestWaWebVersion).toHaveBeenCalledWith({});
     });
 
     it('falls back gracefully when version fetch fails', async () => {
       const { fetchLatestWaWebVersion } =
         await import('@whiskeysockets/baileys');
+
       vi.mocked(fetchLatestWaWebVersion).mockRejectedValueOnce(
         new Error('network error'),
       );
 
       const opts = createTestOpts();
       const channel = new WhatsAppChannel(opts);
+
       await connectChannel(channel);
 
       // Should still connect successfully despite fetch failure
@@ -870,21 +880,25 @@ describe('WhatsAppChannel', () => {
   describe('ownsJid', () => {
     it('owns @g.us JIDs (WhatsApp groups)', () => {
       const channel = new WhatsAppChannel(createTestOpts());
+
       expect(channel.ownsJid('12345@g.us')).toBe(true);
     });
 
     it('owns @s.whatsapp.net JIDs (WhatsApp DMs)', () => {
       const channel = new WhatsAppChannel(createTestOpts());
+
       expect(channel.ownsJid('12345@s.whatsapp.net')).toBe(true);
     });
 
     it('does not own Telegram JIDs', () => {
       const channel = new WhatsAppChannel(createTestOpts());
+
       expect(channel.ownsJid('tg:12345')).toBe(false);
     });
 
     it('does not own unknown JID formats', () => {
       const channel = new WhatsAppChannel(createTestOpts());
+
       expect(channel.ownsJid('random-string')).toBe(false);
     });
   });
@@ -938,11 +952,13 @@ describe('WhatsAppChannel', () => {
   describe('channel properties', () => {
     it('has name "whatsapp"', () => {
       const channel = new WhatsAppChannel(createTestOpts());
+
       expect(channel.name).toBe('whatsapp');
     });
 
     it('does not expose prefixAssistantName (prefix handled internally)', () => {
       const channel = new WhatsAppChannel(createTestOpts());
+
       expect('prefixAssistantName' in channel).toBe(false);
     });
   });

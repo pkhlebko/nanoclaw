@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { _initTestDatabase, getAllChats, storeChatMetadata } from './db.js';
+
 import { getAvailableGroups, _setRegisteredGroups } from './index.js';
 
 beforeEach(() => {
@@ -15,21 +16,25 @@ describe('JID ownership patterns', () => {
 
   it('WhatsApp group JID: ends with @g.us', () => {
     const jid = '12345678@g.us';
+
     expect(jid.endsWith('@g.us')).toBe(true);
   });
 
   it('WhatsApp DM JID: ends with @s.whatsapp.net', () => {
     const jid = '12345678@s.whatsapp.net';
+
     expect(jid.endsWith('@s.whatsapp.net')).toBe(true);
   });
 
   it('Telegram JID: starts with tg:', () => {
     const jid = 'tg:123456789';
+
     expect(jid.startsWith('tg:')).toBe(true);
   });
 
   it('Telegram group JID: starts with tg: and has negative ID', () => {
     const jid = 'tg:-1001234567890';
+
     expect(jid.startsWith('tg:')).toBe(true);
   });
 });
@@ -61,6 +66,7 @@ describe('getAvailableGroups', () => {
     );
 
     const groups = getAvailableGroups();
+
     expect(groups).toHaveLength(2);
     expect(groups.map((g) => g.jid)).toContain('group1@g.us');
     expect(groups.map((g) => g.jid)).toContain('group2@g.us');
@@ -78,6 +84,7 @@ describe('getAvailableGroups', () => {
     );
 
     const groups = getAvailableGroups();
+
     expect(groups).toHaveLength(1);
     expect(groups[0].jid).toBe('group@g.us');
   });
@@ -139,6 +146,7 @@ describe('getAvailableGroups', () => {
     );
 
     const groups = getAvailableGroups();
+
     expect(groups[0].jid).toBe('new@g.us');
     expect(groups[1].jid).toBe('mid@g.us');
     expect(groups[2].jid).toBe('old@g.us');
@@ -169,12 +177,14 @@ describe('getAvailableGroups', () => {
     );
 
     const groups = getAvailableGroups();
+
     expect(groups).toHaveLength(1);
     expect(groups[0].jid).toBe('group@g.us');
   });
 
   it('returns empty array when no chats exist', () => {
     const groups = getAvailableGroups();
+
     expect(groups).toHaveLength(0);
   });
 
@@ -195,6 +205,7 @@ describe('getAvailableGroups', () => {
     );
 
     const groups = getAvailableGroups();
+
     expect(groups).toHaveLength(1);
     expect(groups[0].jid).toBe('tg:100200300');
   });
@@ -209,6 +220,7 @@ describe('getAvailableGroups', () => {
     );
 
     const groups = getAvailableGroups();
+
     expect(groups).toHaveLength(1);
     expect(groups[0].jid).toBe('tg:-1001234567890');
     expect(groups[0].name).toBe('TG Group');
@@ -271,6 +283,7 @@ describe('getAvailableGroups', () => {
     );
 
     const groups = getAvailableGroups();
+
     expect(groups).toHaveLength(3);
     expect(groups[0].jid).toBe('tg:100');
     expect(groups[1].jid).toBe('wa2@g.us');

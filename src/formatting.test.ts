@@ -60,6 +60,7 @@ describe('escapeXml', () => {
 describe('formatMessages', () => {
   it('formats a single message as XML', () => {
     const result = formatMessages([makeMsg()]);
+
     expect(result).toBe(
       '<messages>\n' +
         '<message sender="Alice" time="2024-01-01T00:00:00.000Z">hello</message>\n' +
@@ -78,6 +79,7 @@ describe('formatMessages', () => {
       makeMsg({ id: '2', sender_name: 'Bob', content: 'hey', timestamp: 't2' }),
     ];
     const result = formatMessages(msgs);
+
     expect(result).toContain('sender="Alice"');
     expect(result).toContain('sender="Bob"');
     expect(result).toContain('>hi</message>');
@@ -86,6 +88,7 @@ describe('formatMessages', () => {
 
   it('escapes special characters in sender names', () => {
     const result = formatMessages([makeMsg({ sender_name: 'A & B <Co>' })]);
+
     expect(result).toContain('sender="A &amp; B &lt;Co&gt;"');
   });
 
@@ -93,6 +96,7 @@ describe('formatMessages', () => {
     const result = formatMessages([
       makeMsg({ content: '<script>alert("xss")</script>' }),
     ]);
+
     expect(result).toContain(
       '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;',
     );
@@ -100,6 +104,7 @@ describe('formatMessages', () => {
 
   it('handles empty array', () => {
     const result = formatMessages([]);
+
     expect(result).toBe('<messages>\n\n</messages>');
   });
 });
@@ -202,36 +207,43 @@ describe('trigger gating (requiresTrigger interaction)', () => {
     messages: NewMessage[],
   ): boolean {
     if (!shouldRequireTrigger(isMainGroup, requiresTrigger)) return true;
+
     return messages.some((m) => TRIGGER_PATTERN.test(m.content.trim()));
   }
 
   it('main group always processes (no trigger needed)', () => {
     const msgs = [makeMsg({ content: 'hello no trigger' })];
+
     expect(shouldProcess(true, undefined, msgs)).toBe(true);
   });
 
   it('main group processes even with requiresTrigger=true', () => {
     const msgs = [makeMsg({ content: 'hello no trigger' })];
+
     expect(shouldProcess(true, true, msgs)).toBe(true);
   });
 
   it('non-main group with requiresTrigger=undefined requires trigger (defaults to true)', () => {
     const msgs = [makeMsg({ content: 'hello no trigger' })];
+
     expect(shouldProcess(false, undefined, msgs)).toBe(false);
   });
 
   it('non-main group with requiresTrigger=true requires trigger', () => {
     const msgs = [makeMsg({ content: 'hello no trigger' })];
+
     expect(shouldProcess(false, true, msgs)).toBe(false);
   });
 
   it('non-main group with requiresTrigger=true processes when trigger present', () => {
     const msgs = [makeMsg({ content: `@${ASSISTANT_NAME} do something` })];
+
     expect(shouldProcess(false, true, msgs)).toBe(true);
   });
 
   it('non-main group with requiresTrigger=false always processes (no trigger needed)', () => {
     const msgs = [makeMsg({ content: 'hello no trigger' })];
+
     expect(shouldProcess(false, false, msgs)).toBe(true);
   });
 });
