@@ -4,18 +4,18 @@ import { RegisteredGroup } from '../types.js';
 
 import { getDb } from './instance.js';
 
+interface DbRow {
+  jid: string;
+  name: string;
+  folder: string;
+  trigger_pattern: string;
+  added_at: string;
+  container_config: string | null;
+  requires_trigger: number | null;
+}
+
 export function getRegisteredGroup(jid: string): (RegisteredGroup & { jid: string }) | undefined {
-  const row = getDb().prepare('SELECT * FROM registered_groups WHERE jid = ?').get(jid) as
-    | {
-      jid: string;
-      name: string;
-      folder: string;
-      trigger_pattern: string;
-      added_at: string;
-      container_config: string | null;
-      requires_trigger: number | null;
-    }
-    | undefined;
+  const row = getDb().prepare('SELECT * FROM registered_groups WHERE jid = ?').get(jid) as DbRow | undefined;
 
   if (!row) return undefined;
 

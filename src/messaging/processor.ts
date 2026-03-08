@@ -141,15 +141,12 @@ export async function runAgent(
 
   writeGroupsSnapshot(group.folder, isMain, opts.getAvailableGroups());
 
-  const wrappedOnOutput = opts.onOutput
-    ? async (output: ContainerOutput): Promise<void> => {
-      if (output.newSessionId) {
-        updateSession(group.folder, output.newSessionId, state);
-      }
+  const genOnOutput = async (output: ContainerOutput): Promise<void> => {
+    if (output.newSessionId) updateSession(group.folder, output.newSessionId, state);
 
-      await opts.onOutput!(output);
-    }
-    : undefined;
+    await opts.onOutput!(output);
+  };
+  const wrappedOnOutput = opts.onOutput ? genOnOutput : undefined;
 
   try {
     const output = await runContainerAgent(

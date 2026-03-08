@@ -71,16 +71,16 @@ function storeSimpleMessage(ctx: Context, placeholder: string, opts: TelegramCha
 }
 
 export function registerCommandHandlers(bot: Bot, opts: TelegramChannelOpts, overrideMgr: ModelOverrideManager): void {
-  const handleModelCommand =
-    (alias: string, displayName: string) =>
-      async (ctx: Context): Promise<void> => {
-        const chatJid = `tg:${ctx.chat!.id}`;
+  function handleModelCommand(alias: string, displayName: string): (ctx: Context) => Promise<void> {
+    return async (ctx): Promise<void> => {
+      const chatJid = `tg:${ctx.chat!.id}`;
 
-        if (!opts.registeredGroups()[chatJid]) return;
+      if (!opts.registeredGroups()[chatJid]) return;
 
-        overrideMgr.set(chatJid, MODEL_ALIAS_MAP[alias]);
-        await ctx.reply(`Switched to ${displayName} for 30 min.`);
-      };
+      overrideMgr.set(chatJid, MODEL_ALIAS_MAP[alias]);
+      await ctx.reply(`Switched to ${displayName} for 30 min.`);
+    };
+  }
 
   bot.command('opus', handleModelCommand('opus', 'Opus'));
   bot.command('sonnet', handleModelCommand('sonnet', 'Sonnet'));
