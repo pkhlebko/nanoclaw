@@ -79,6 +79,12 @@ export const MODEL_ALIAS_MAP: Record<string, string> = {
 
 export const MODEL_OVERRIDE_TIMEOUT = parseInt(process.env.MODEL_OVERRIDE_TIMEOUT || '1800000', 10);
 
+/** Graceful shutdown timeout in milliseconds. */
+export const SHUTDOWN_TIMEOUT_MS = 10_000;
+
+/** Matches a --model <alias> prefix in a message prompt, capturing the alias in group 1. */
+export const MODEL_FLAG_REGEX = /^--model\s+(\S+)\s*/;
+
 // Telegram limits
 export const TELEGRAM_MAX_MESSAGE_LENGTH = 4096;
 export const TELEGRAM_MAX_IMAGE_BYTES = 5242880; // 5 * 1024 * 1024;
