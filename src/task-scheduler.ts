@@ -1,14 +1,13 @@
 import { ChildProcess } from 'child_process';
 import fs from 'fs';
 
-import { CronExpressionParser } from 'cron-parser';
-
-import { ASSISTANT_NAME, MAIN_GROUP_FOLDER, SCHEDULER_POLL_INTERVAL, TIMEZONE } from './config.js';
+import { ASSISTANT_NAME, MAIN_GROUP_FOLDER, SCHEDULER_POLL_INTERVAL } from './config.js';
 import { ContainerOutput, runContainerAgent, writeTasksSnapshot } from './container-runner.js';
 import { getAllTasks, getDueTasks, getTaskById, logTaskRun, updateTask, updateTaskAfterRun } from './db-tasks.js';
 import { resolveGroupFolderPath } from './group-folder.js';
 import { GroupQueue } from './group-queue.js';
 import { logger } from './logger.js';
+import { computeNextRun } from './schedule-utils.js';
 import { RegisteredGroup, ScheduledTask } from './types.js';
 
 export interface SchedulerDependencies {
@@ -163,20 +162,7 @@ async function runTask(task: ScheduledTask, deps: SchedulerDependencies): Promis
     error,
   });
 
-  let nextRun: string | null = null;
-
-  if (task.schedule_type === 'cron') {
-    const interval = CronExpressionParser.parse(task.schedule_value, {
-      tz: TIMEZONE,
-    });
-
-    nextRun = interval.next().toISOString();
-  } else if (task.schedule_type === 'interval') {
-    const ms = parseInt(task.schedule_value, 10);
-
-    nextRun = new Date(Date.now() + ms).toISOString();
-  }
-  // 'once' tasks have no next run
+  const nextRun = computeNextRun(task.schedule_type as 'cron' | 'interval' | 'once', task.schedule_value, true);
 
   const resultSummary = error ? `Error: ${error}` : result ? result.slice(0, 200) : 'Completed';
 
@@ -220,7 +206,7 @@ export function startSchedulerLoop(deps: SchedulerDependencies): void {
     setTimeout(loop, SCHEDULER_POLL_INTERVAL);
   };
 
-  loop();
+  void loop();
 }
 
 /** @internal - for tests only. */

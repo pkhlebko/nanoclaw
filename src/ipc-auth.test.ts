@@ -3,7 +3,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { getRegisteredGroup, setRegisteredGroup } from './db-groups.js';
 import { createTask, getAllTasks, getTaskById } from './db-tasks.js';
 import { _initTestDatabase } from './db.js';
-import { processTaskIpc, IpcDeps } from './ipc.js';
+import { processTaskIpc } from './ipc-tasks.js';
+import { IpcDeps } from './ipc.js';
 import { RegisteredGroup } from './types.js';
 
 // Set up registered groups used across tests
