@@ -1,7 +1,7 @@
 import { ChildProcess } from 'child_process';
 import fs from 'fs';
 
-import { ASSISTANT_NAME, MAIN_GROUP_FOLDER, SCHEDULER_POLL_INTERVAL, TASK_CLOSE_DELAY_MS } from '../config.js';
+import { ASSISTANT_NAME, LOG_PREVIEW_LENGTH, MAIN_GROUP_FOLDER, SCHEDULER_POLL_INTERVAL, TASK_CLOSE_DELAY_MS } from '../config.js';
 import { ContainerOutput, runContainerAgent } from '../container/runner.js';
 import { getAllTasks, getDueTasks, getTaskById, logTaskRun, updateTask, updateTaskAfterRun } from '../db/tasks.js';
 import { resolveGroupFolderPath } from '../groups/folder.js';
@@ -95,7 +95,7 @@ async function runTask(task: ScheduledTask, deps: SchedulerDependencies): Promis
   // query loop to time out. A short delay handles any final MCP calls.
   let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const scheduleClose = () => {
+  const scheduleClose = (): void => {
     if (closeTimer) return; // already scheduled
 
     closeTimer = setTimeout(() => {
@@ -165,7 +165,7 @@ async function runTask(task: ScheduledTask, deps: SchedulerDependencies): Promis
 
   const nextRun = computeNextRun(task.schedule_type as 'cron' | 'interval' | 'once', task.schedule_value, true);
 
-  const resultSummary = error ? `Error: ${error}` : result ? result.slice(0, 200) : 'Completed';
+  const resultSummary = error ? `Error: ${error}` : result ? result.slice(0, LOG_PREVIEW_LENGTH) : 'Completed';
 
   updateTaskAfterRun(task.id, nextRun, resultSummary);
 }
@@ -182,7 +182,7 @@ export function startSchedulerLoop(deps: SchedulerDependencies): void {
   schedulerRunning = true;
   logger.info('Scheduler loop started');
 
-  const loop = async () => {
+  const loop = async (): Promise<void> => {
     try {
       const dueTasks = getDueTasks();
 

@@ -7,7 +7,6 @@
  * Usage: npx tsx src/whatsapp-auth.ts
  */
 import fs from 'fs';
-import path from 'path';
 import readline from 'readline';
 
 import makeWASocket, {
@@ -23,6 +22,9 @@ import qrcode from 'qrcode-terminal';
 const AUTH_DIR = './store/auth';
 const QR_FILE = './store/qr-data.txt';
 const STATUS_FILE = './store/auth-status.txt';
+const PAIRING_CODE_DELAY_MS = 3000;
+const WA_STREAM_ERROR_CODE = 515;
+const CREDS_SAVE_DELAY_MS = 1000;
 
 const logger = pino({
   level: 'warn', // Quiet logging - only show errors
@@ -51,8 +53,8 @@ async function connectSocket(phoneNumber?: string, isReconnect = false): Promise
 
   if (state.creds.registered && !isReconnect) {
     fs.writeFileSync(STATUS_FILE, 'already_authenticated');
-    console.log('✓ Already authenticated with WhatsApp');
-    console.log('  To re-authenticate, delete the store/auth folder and run again.');
+    console.info('✓ Already authenticated with WhatsApp');
+    console.info('  To re-authenticate, delete the store/auth folder and run again.');
     process.exit(0);
   }
 
@@ -79,17 +81,19 @@ async function connectSocket(phoneNumber?: string, isReconnect = false): Promise
       try {
         const code = await sock.requestPairingCode(phoneNumber!);
 
-        console.log(`\n🔗 Your pairing code: ${code}\n`);
-        console.log('  1. Open WhatsApp on your phone');
-        console.log('  2. Tap Settings → Linked Devices → Link a Device');
-        console.log('  3. Tap "Link with phone number instead"');
-        console.log(`  4. Enter this code: ${code}\n`);
+        console.info(`\n🔗 Your pairing code: ${code}\n`);
+        console.info('  1. Open WhatsApp on your phone');
+        console.info('  2. Tap Settings → Linked Devices → Link a Device');
+        console.info('  3. Tap "Link with phone number instead"');
+        console.info(`  4. Enter this code: ${code}\n`);
         fs.writeFileSync(STATUS_FILE, `pairing_code:${code}`);
-      } catch (err: any) {
-        console.error('Failed to request pairing code:', err.message);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+
+        console.error('Failed to request pairing code:', message);
         process.exit(1);
       }
-    }, 3000);
+    }, PAIRING_CODE_DELAY_MS);
   }
 
   sock.ev.on('connection.update', (update) => {
@@ -98,32 +102,32 @@ async function connectSocket(phoneNumber?: string, isReconnect = false): Promise
     if (qr) {
       // Write raw QR data to file so the setup skill can render it
       fs.writeFileSync(QR_FILE, qr);
-      console.log('Scan this QR code with WhatsApp:\n');
-      console.log('  1. Open WhatsApp on your phone');
-      console.log('  2. Tap Settings → Linked Devices → Link a Device');
-      console.log('  3. Point your camera at the QR code below\n');
+      console.info('Scan this QR code with WhatsApp:\n');
+      console.info('  1. Open WhatsApp on your phone');
+      console.info('  2. Tap Settings → Linked Devices → Link a Device');
+      console.info('  3. Point your camera at the QR code below\n');
       qrcode.generate(qr, { small: true });
     }
 
     if (connection === 'close') {
-      const reason = (lastDisconnect?.error as any)?.output?.statusCode;
+      const reason = (lastDisconnect?.error as { output?: { statusCode?: number } })?.output?.statusCode;
 
       if (reason === DisconnectReason.loggedOut) {
         fs.writeFileSync(STATUS_FILE, 'failed:logged_out');
-        console.log('\n✗ Logged out. Delete store/auth and try again.');
+        console.info('\n✗ Logged out. Delete store/auth and try again.');
         process.exit(1);
       } else if (reason === DisconnectReason.timedOut) {
         fs.writeFileSync(STATUS_FILE, 'failed:qr_timeout');
-        console.log('\n✗ QR code timed out. Please try again.');
+        console.info('\n✗ QR code timed out. Please try again.');
         process.exit(1);
-      } else if (reason === 515) {
+      } else if (reason === WA_STREAM_ERROR_CODE) {
         // 515 = stream error, often happens after pairing succeeds but before
         // registration completes. Reconnect to finish the handshake.
-        console.log('\n⟳ Stream error (515) after pairing — reconnecting...');
-        connectSocket(phoneNumber, true);
+        console.info('\n⟳ Stream error (515) after pairing — reconnecting...');
+        void connectSocket(phoneNumber, true);
       } else {
         fs.writeFileSync(STATUS_FILE, `failed:${reason || 'unknown'}`);
-        console.log('\n✗ Connection failed. Please try again.');
+        console.info('\n✗ Connection failed. Please try again.');
         process.exit(1);
       }
     }
@@ -136,12 +140,12 @@ async function connectSocket(phoneNumber?: string, isReconnect = false): Promise
         fs.unlinkSync(QR_FILE);
       } catch {}
 
-      console.log('\n✓ Successfully authenticated with WhatsApp!');
-      console.log('  Credentials saved to store/auth/');
-      console.log('  You can now start the NanoClaw service.\n');
+      console.info('\n✓ Successfully authenticated with WhatsApp!');
+      console.info('  Credentials saved to store/auth/');
+      console.info('  You can now start the NanoClaw service.\n');
 
       // Give it a moment to save credentials, then exit
-      setTimeout(() => process.exit(0), 1000);
+      setTimeout(() => process.exit(0), CREDS_SAVE_DELAY_MS);
     }
   });
 
@@ -166,7 +170,7 @@ async function authenticate(): Promise<void> {
     phoneNumber = await askQuestion('Enter your phone number (with country code, no + or spaces, e.g. 14155551234): ');
   }
 
-  console.log('Starting WhatsApp authentication...\n');
+  console.info('Starting WhatsApp authentication...\n');
 
   await connectSocket(phoneNumber);
 }

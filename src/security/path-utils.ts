@@ -11,7 +11,7 @@ export function expandPath(p: string): string {
   const homeDir = process.env.HOME || os.homedir();
 
   if (p.startsWith('~/')) {
-    return path.join(homeDir, p.slice(2));
+    return path.join(homeDir, p.slice('~/'.length));
   }
 
   if (p === '~') {

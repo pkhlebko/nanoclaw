@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { JSON_INDENT } from '../config.js';
 import { resolveGroupIpcPath } from '../groups/folder.js';
 import { AvailableGroup } from '../types.js';
 
@@ -29,7 +30,7 @@ export function writeTasksSnapshot(
   const filteredTasks = isMain ? tasks : tasks.filter((t) => t.groupFolder === groupFolder);
   const tasksFile = path.join(groupIpcDir, 'current_tasks.json');
 
-  fs.writeFileSync(tasksFile, JSON.stringify(filteredTasks, null, 2));
+  fs.writeFileSync(tasksFile, JSON.stringify(filteredTasks, null, JSON_INDENT));
 }
 
 /**
@@ -54,7 +55,7 @@ export function writeGroupsSnapshot(groupFolder: string, isMain: boolean, groups
         lastSync: new Date().toISOString(),
       },
       null,
-      2,
+      JSON_INDENT,
     ),
   );
 }

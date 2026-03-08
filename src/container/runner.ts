@@ -6,7 +6,7 @@ import { ChildProcess, exec, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-import { CONTAINER_MAX_OUTPUT_SIZE, CONTAINER_TIMEOUT, IDLE_TIMEOUT } from '../config.js';
+import { CONTAINER_MAX_OUTPUT_SIZE, CONTAINER_TIMEOUT, IDLE_TIMEOUT, JSON_INDENT } from '../config.js';
 import { readEnvFile } from '../env.js';
 import { resolveGroupFolderPath } from '../groups/folder.js';
 import { logger } from '../logger.js';
@@ -228,7 +228,7 @@ export async function runContainerAgent(
           isMain: input.isMain,
           promptLength: input.prompt.length,
           sessionId: input.sessionId,
-          serializedInput: JSON.stringify(input, null, 2),
+          serializedInput: JSON.stringify(input, null, JSON_INDENT),
           duration,
           code,
           stdout,

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import { Bot } from 'grammy';
+import { Bot, Context } from 'grammy';
 
 import { ASSISTANT_NAME, MODEL_ALIAS_MAP, TELEGRAM_MAX_FILE_BYTES, TELEGRAM_MAX_IMAGE_BYTES, TRIGGER_PATTERN } from '../config.js';
 import { resolveGroupFolderPath } from '../groups/folder.js';
@@ -31,15 +31,17 @@ interface MessageContext {
   caption: string;
 }
 
-function extractMessageContext(ctx: any): MessageContext {
+function extractMessageContext(ctx: Context): MessageContext {
+  const msg = ctx.message!;
+
   return {
-    chatJid: `tg:${ctx.chat.id}`,
-    timestamp: new Date(ctx.message.date * UNIX_TO_MS).toISOString(),
+    chatJid: `tg:${ctx.chat!.id}`,
+    timestamp: new Date(msg.date * UNIX_TO_MS).toISOString(),
     senderName: ctx.from?.first_name || ctx.from?.username || ctx.from?.id?.toString() || 'Unknown',
     sender: ctx.from?.id?.toString() || '',
-    msgId: ctx.message.message_id.toString(),
-    isGroup: ctx.chat.type === 'group' || ctx.chat.type === 'supergroup',
-    caption: ctx.message.caption ? ` ${ctx.message.caption}` : '',
+    msgId: msg.message_id.toString(),
+    isGroup: ctx.chat!.type === 'group' || ctx.chat!.type === 'supergroup',
+    caption: msg.caption ? ` ${msg.caption}` : '',
   };
 }
 
@@ -50,7 +52,7 @@ function saveToMediaDir(buffer: Buffer, folder: string, savedName: string): void
   fs.writeFileSync(path.join(mediaDir, savedName), buffer);
 }
 
-function storeSimpleMessage(ctx: any, placeholder: string, opts: TelegramChannelOpts): void {
+function storeSimpleMessage(ctx: Context, placeholder: string, opts: TelegramChannelOpts): void {
   const { chatJid, timestamp, senderName, sender, msgId, isGroup, caption } = extractMessageContext(ctx);
   const group = opts.registeredGroups()[chatJid];
 
@@ -69,14 +71,16 @@ function storeSimpleMessage(ctx: any, placeholder: string, opts: TelegramChannel
 }
 
 export function registerCommandHandlers(bot: Bot, opts: TelegramChannelOpts, overrideMgr: ModelOverrideManager): void {
-  const handleModelCommand = (alias: string, displayName: string) => async (ctx: any) => {
-    const chatJid = `tg:${ctx.chat.id}`;
+  const handleModelCommand =
+    (alias: string, displayName: string) =>
+      async (ctx: Context): Promise<void> => {
+        const chatJid = `tg:${ctx.chat!.id}`;
 
-    if (!opts.registeredGroups()[chatJid]) return;
+        if (!opts.registeredGroups()[chatJid]) return;
 
-    overrideMgr.set(chatJid, MODEL_ALIAS_MAP[alias]);
-    await ctx.reply(`Switched to ${displayName} for 30 min.`);
-  };
+        overrideMgr.set(chatJid, MODEL_ALIAS_MAP[alias]);
+        await ctx.reply(`Switched to ${displayName} for 30 min.`);
+      };
 
   bot.command('opus', handleModelCommand('opus', 'Opus'));
   bot.command('sonnet', handleModelCommand('sonnet', 'Sonnet'));
@@ -91,7 +95,7 @@ export function registerCommandHandlers(bot: Bot, opts: TelegramChannelOpts, ove
   });
   bot.command('chatid', async (ctx) => {
     const chatType = ctx.chat.type;
-    const chatName = chatType === 'private' ? ctx.from?.first_name || 'Private' : (ctx.chat as any).title || 'Unknown';
+    const chatName = chatType === 'private' ? ctx.from?.first_name || 'Private' : (ctx.chat as { title?: string }).title || 'Unknown';
 
     await ctx.reply(`Chat ID: \`tg:${ctx.chat.id}\`\nName: ${chatName}\nType: ${chatType}`, { parse_mode: 'Markdown' });
   });
@@ -113,7 +117,7 @@ export function registerTextHandler(bot: Bot, opts: TelegramChannelOpts, overrid
 
     if (botUsername) {
       const entities = ctx.message.entities || [];
-      const isBotMentioned = entities.some((entity: any) => {
+      const isBotMentioned = entities.some((entity) => {
         if (entity.type === 'mention') {
           const mentionText = content.substring(entity.offset, entity.offset + entity.length).toLowerCase();
 
@@ -128,7 +132,7 @@ export function registerTextHandler(bot: Bot, opts: TelegramChannelOpts, overrid
       }
     }
 
-    const chatName = ctx.chat.type === 'private' ? senderName : (ctx.chat as any).title || chatJid;
+    const chatName = ctx.chat.type === 'private' ? senderName : (ctx.chat as { title?: string }).title || chatJid;
 
     opts.onChatMetadata(chatJid, timestamp, chatName, 'telegram', isGroup);
 

@@ -74,7 +74,7 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
       complexity: ['error', { max: 20 }],
       'max-params': ['error', { max: 5 }],
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-console': ['warn', { allow: ['info', 'warn', 'error'] }],
       'padding-line-between-statements': [
         'error',
         { blankLine: 'always', prev: 'import', next: '*' },
@@ -126,8 +126,16 @@ export default tseslint.config(
       'no-magic-numbers': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'off',
       'max-lines': 'off',
       'max-lines-per-function': 'off',
+    },
+  },
+  {
+    files: ['**/config.ts'],
+    rules: {
+      'no-magic-numbers': 'off',
+      'max-lines': 'off',
     },
   },
 );

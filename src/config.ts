@@ -91,6 +91,12 @@ export const WA_GROUP_SYNC_INTERVAL_MS = 86400000; //24 * 60 * 60 * 1000;
 /** Matches a --model <alias> prefix in a message prompt, capturing the alias in group 1. */
 export const MODEL_FLAG_REGEX = /^--model\s+(\S+)\s*/;
 
+/** JSON.stringify indent spaces for human-readable output. */
+export const JSON_INDENT = 2;
+
+/** Max characters to include in log message previews. */
+export const LOG_PREVIEW_LENGTH = 200;
+
 // Telegram limits
 export const TELEGRAM_MAX_MESSAGE_LENGTH = 4096;
 export const TELEGRAM_MAX_IMAGE_BYTES = 5242880; // 5 * 1024 * 1024;

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import { CONTAINER_IMAGE, DATA_DIR, GROUPS_DIR, TIMEZONE } from '../config.js';
+import { CONTAINER_IMAGE, DATA_DIR, GROUPS_DIR, JSON_INDENT, TIMEZONE } from '../config.js';
 import { readEnvFile } from '../env.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from '../groups/folder.js';
 import { logger } from '../logger.js';
@@ -70,7 +70,7 @@ export function buildVolumeMounts(group: RegisteredGroup, isMain: boolean): Volu
           },
         },
         null,
-        2,
+        JSON_INDENT,
       ) + '\n',
     );
   }

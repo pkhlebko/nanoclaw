@@ -7,14 +7,14 @@ import { getDb } from './instance.js';
 export function getRegisteredGroup(jid: string): (RegisteredGroup & { jid: string }) | undefined {
   const row = getDb().prepare('SELECT * FROM registered_groups WHERE jid = ?').get(jid) as
     | {
-        jid: string;
-        name: string;
-        folder: string;
-        trigger_pattern: string;
-        added_at: string;
-        container_config: string | null;
-        requires_trigger: number | null;
-      }
+      jid: string;
+      name: string;
+      folder: string;
+      trigger_pattern: string;
+      added_at: string;
+      container_config: string | null;
+      requires_trigger: number | null;
+    }
     | undefined;
 
   if (!row) return undefined;
