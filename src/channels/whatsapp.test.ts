@@ -22,7 +22,7 @@ vi.mock('../logger.js', () => ({
 }));
 
 // Mock db
-vi.mock('../db.js', () => ({
+vi.mock('../db-chats.js', () => ({
   getLastGroupSync: vi.fn(() => null),
   setLastGroupSync: vi.fn(),
   updateChatName: vi.fn(),
@@ -99,7 +99,7 @@ vi.mock('@whiskeysockets/baileys', () => {
   };
 });
 
-import { getLastGroupSync, updateChatName, setLastGroupSync } from '../db.js';
+import { getLastGroupSync, updateChatName, setLastGroupSync } from '../db-chats.js';
 
 import { WhatsAppChannel, WhatsAppChannelOpts } from './whatsapp.js';
 

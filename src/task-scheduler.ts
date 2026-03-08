@@ -5,7 +5,7 @@ import { CronExpressionParser } from 'cron-parser';
 
 import { ASSISTANT_NAME, MAIN_GROUP_FOLDER, SCHEDULER_POLL_INTERVAL, TIMEZONE } from './config.js';
 import { ContainerOutput, runContainerAgent, writeTasksSnapshot } from './container-runner.js';
-import { getAllTasks, getDueTasks, getTaskById, logTaskRun, updateTask, updateTaskAfterRun } from './db.js';
+import { getAllTasks, getDueTasks, getTaskById, logTaskRun, updateTask, updateTaskAfterRun } from './db-tasks.js';
 import { resolveGroupFolderPath } from './group-folder.js';
 import { GroupQueue } from './group-queue.js';
 import { logger } from './logger.js';

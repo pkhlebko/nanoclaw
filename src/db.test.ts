@@ -1,17 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import {
-  _initTestDatabase,
-  createTask,
-  deleteTask,
-  getAllChats,
-  getMessagesSince,
-  getNewMessages,
-  getTaskById,
-  storeChatMetadata,
-  storeMessage,
-  updateTask,
-} from './db.js';
+import { getAllChats, storeChatMetadata } from './db-chats.js';
+import { createTask, deleteTask, getTaskById, updateTask } from './db-tasks.js';
+import { _initTestDatabase, getMessagesSince, getNewMessages, storeMessage } from './db.js';
 
 beforeEach(() => {
   _initTestDatabase();

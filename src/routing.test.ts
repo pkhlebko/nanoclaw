@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { _initTestDatabase, getAllChats, storeChatMetadata } from './db.js';
+import { getAllChats, storeChatMetadata } from './db-chats.js';
+import { _initTestDatabase } from './db.js';
 
 import { getAvailableGroups, _setRegisteredGroups } from './index.js';
 
