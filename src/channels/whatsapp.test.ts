@@ -9,6 +9,7 @@ vi.mock('../config.js', () => ({
   STORE_DIR: '/tmp/nanoclaw-test-store',
   ASSISTANT_NAME: 'Andy',
   ASSISTANT_HAS_OWN_NUMBER: false,
+  WA_GROUP_SYNC_INTERVAL_MS: 24 * 60 * 60 * 1000,
 }));
 
 // Mock logger
