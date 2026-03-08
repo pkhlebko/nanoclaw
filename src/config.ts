@@ -82,6 +82,9 @@ export const MODEL_OVERRIDE_TIMEOUT = parseInt(process.env.MODEL_OVERRIDE_TIMEOU
 /** Graceful shutdown timeout in milliseconds. */
 export const SHUTDOWN_TIMEOUT_MS = 10_000;
 
+/** How long to wait between WhatsApp group metadata syncs. */
+export const WA_GROUP_SYNC_INTERVAL_MS = 86400000; //24 * 60 * 60 * 1000;
+
 /** Matches a --model <alias> prefix in a message prompt, capturing the alias in group 1. */
 export const MODEL_FLAG_REGEX = /^--model\s+(\S+)\s*/;
 
