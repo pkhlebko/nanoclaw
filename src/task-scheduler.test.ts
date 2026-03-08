@@ -1,10 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { _initTestDatabase, createTask, getTaskById } from './db.js';
-import {
-  _resetSchedulerLoopForTests,
-  startSchedulerLoop,
-} from './task-scheduler.js';
+import { _resetSchedulerLoopForTests, startSchedulerLoop } from './task-scheduler.js';
 
 describe('task scheduler', () => {
   beforeEach(() => {
@@ -31,11 +28,9 @@ describe('task scheduler', () => {
       created_at: '2026-02-22T00:00:00.000Z',
     });
 
-    const enqueueTask = vi.fn(
-      (_groupJid: string, _taskId: string, fn: () => Promise<void>) => {
-        void fn();
-      },
-    );
+    const enqueueTask = vi.fn((_groupJid: string, _taskId: string, fn: () => Promise<void>) => {
+      void fn();
+    });
 
     startSchedulerLoop({
       registeredGroups: () => ({}),

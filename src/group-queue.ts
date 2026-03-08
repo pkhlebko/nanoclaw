@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: refactor — extract retry policy and drain logic */
 import { ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
@@ -30,8 +31,7 @@ export class GroupQueue {
   private groups = new Map<string, GroupState>();
   private activeCount = 0;
   private waitingGroups: string[] = [];
-  private processMessagesFn: ((groupJid: string) => Promise<boolean>) | null =
-    null;
+  private processMessagesFn: ((groupJid: string) => Promise<boolean>) | null = null;
   private shuttingDown = false;
 
   private getGroup(groupJid: string): GroupState {
@@ -78,17 +78,12 @@ export class GroupQueue {
         this.waitingGroups.push(groupJid);
       }
 
-      logger.debug(
-        { groupJid, activeCount: this.activeCount },
-        'At concurrency limit, message queued',
-      );
+      logger.debug({ groupJid, activeCount: this.activeCount }, 'At concurrency limit, message queued');
 
       return;
     }
 
-    this.runForGroup(groupJid, 'messages').catch((err) =>
-      logger.error({ groupJid, err }, 'Unhandled error in runForGroup'),
-    );
+    this.runForGroup(groupJid, 'messages').catch((err) => logger.error({ groupJid, err }, 'Unhandled error in runForGroup'));
   }
 
   enqueueTask(groupJid: string, taskId: string, fn: () => Promise<void>): void {
@@ -122,10 +117,7 @@ export class GroupQueue {
         this.waitingGroups.push(groupJid);
       }
 
-      logger.debug(
-        { groupJid, taskId, activeCount: this.activeCount },
-        'At concurrency limit, task queued',
-      );
+      logger.debug({ groupJid, taskId, activeCount: this.activeCount }, 'At concurrency limit, task queued');
 
       return;
     }
@@ -136,12 +128,7 @@ export class GroupQueue {
     );
   }
 
-  registerProcess(
-    groupJid: string,
-    proc: ChildProcess,
-    containerName: string,
-    groupFolder?: string,
-  ): void {
+  registerProcess(groupJid: string, proc: ChildProcess, containerName: string, groupFolder?: string): void {
     const state = this.getGroup(groupJid);
 
     state.process = proc;
@@ -171,8 +158,7 @@ export class GroupQueue {
   sendMessage(groupJid: string, text: string): boolean {
     const state = this.getGroup(groupJid);
 
-    if (!state.active || !state.groupFolder || state.isTaskContainer)
-      return false;
+    if (!state.active || !state.groupFolder || state.isTaskContainer) return false;
 
     state.idleWaiting = false; // Agent is about to receive work, no longer idle
 
@@ -211,10 +197,7 @@ export class GroupQueue {
     }
   }
 
-  private async runForGroup(
-    groupJid: string,
-    reason: 'messages' | 'drain',
-  ): Promise<void> {
+  private async runForGroup(groupJid: string, reason: 'messages' | 'drain'): Promise<void> {
     const state = this.getGroup(groupJid);
 
     state.active = true;
@@ -223,10 +206,7 @@ export class GroupQueue {
     state.pendingMessages = false;
     this.activeCount++;
 
-    logger.debug(
-      { groupJid, reason, activeCount: this.activeCount },
-      'Starting container for group',
-    );
+    logger.debug({ groupJid, reason, activeCount: this.activeCount }, 'Starting container for group');
 
     try {
       if (this.processMessagesFn) {
@@ -259,10 +239,7 @@ export class GroupQueue {
     state.isTaskContainer = true;
     this.activeCount++;
 
-    logger.debug(
-      { groupJid, taskId: task.id, activeCount: this.activeCount },
-      'Running queued task',
-    );
+    logger.debug({ groupJid, taskId: task.id, activeCount: this.activeCount }, 'Running queued task');
 
     try {
       await task.fn();
@@ -294,10 +271,7 @@ export class GroupQueue {
 
     const delayMs = BASE_RETRY_MS * Math.pow(2, state.retryCount - 1);
 
-    logger.info(
-      { groupJid, retryCount: state.retryCount, delayMs },
-      'Scheduling retry with backoff',
-    );
+    logger.info({ groupJid, retryCount: state.retryCount, delayMs }, 'Scheduling retry with backoff');
     setTimeout(() => {
       if (!this.shuttingDown) {
         this.enqueueMessageCheck(groupJid);
@@ -314,24 +288,14 @@ export class GroupQueue {
     if (state.pendingTasks.length > 0) {
       const task = state.pendingTasks.shift()!;
 
-      this.runTask(groupJid, task).catch((err) =>
-        logger.error(
-          { groupJid, taskId: task.id, err },
-          'Unhandled error in runTask (drain)',
-        ),
-      );
+      this.runTask(groupJid, task).catch((err) => logger.error({ groupJid, taskId: task.id, err }, 'Unhandled error in runTask (drain)'));
 
       return;
     }
 
     // Then pending messages
     if (state.pendingMessages) {
-      this.runForGroup(groupJid, 'drain').catch((err) =>
-        logger.error(
-          { groupJid, err },
-          'Unhandled error in runForGroup (drain)',
-        ),
-      );
+      this.runForGroup(groupJid, 'drain').catch((err) => logger.error({ groupJid, err }, 'Unhandled error in runForGroup (drain)'));
 
       return;
     }
@@ -341,10 +305,7 @@ export class GroupQueue {
   }
 
   private drainWaiting(): void {
-    while (
-      this.waitingGroups.length > 0 &&
-      this.activeCount < MAX_CONCURRENT_CONTAINERS
-    ) {
+    while (this.waitingGroups.length > 0 && this.activeCount < MAX_CONCURRENT_CONTAINERS) {
       const nextJid = this.waitingGroups.shift()!;
       const state = this.getGroup(nextJid);
 
@@ -353,17 +314,11 @@ export class GroupQueue {
         const task = state.pendingTasks.shift()!;
 
         this.runTask(nextJid, task).catch((err) =>
-          logger.error(
-            { groupJid: nextJid, taskId: task.id, err },
-            'Unhandled error in runTask (waiting)',
-          ),
+          logger.error({ groupJid: nextJid, taskId: task.id, err }, 'Unhandled error in runTask (waiting)'),
         );
       } else if (state.pendingMessages) {
         this.runForGroup(nextJid, 'drain').catch((err) =>
-          logger.error(
-            { groupJid: nextJid, err },
-            'Unhandled error in runForGroup (waiting)',
-          ),
+          logger.error({ groupJid: nextJid, err }, 'Unhandled error in runForGroup (waiting)'),
         );
       }
       // If neither pending, skip this group

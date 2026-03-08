@@ -1,25 +1,14 @@
+/* eslint-disable max-lines -- TODO: refactor — split connect() handlers by media type, extract TelegramFileDownloader */
 import fs, { createReadStream } from 'fs';
 import path from 'path';
 
 import { Bot, InputFile } from 'grammy';
 
-import {
-  ASSISTANT_NAME,
-  MODEL_ALIAS_MAP,
-  MODEL_OVERRIDE_TIMEOUT,
-  TRIGGER_PATTERN,
-} from '../config.js';
+import { ASSISTANT_NAME, MODEL_ALIAS_MAP, MODEL_OVERRIDE_TIMEOUT, TRIGGER_PATTERN } from '../config.js';
 import { resolveGroupFolderPath } from '../group-folder.js';
 import { logger } from '../logger.js';
 import { transcribeAudio } from '../transcription.js';
-import {
-  Channel,
-  MessageAttachment,
-  OnChatMetadata,
-  OnInboundMessage,
-  OutboundMedia,
-  RegisteredGroup,
-} from '../types.js';
+import { Channel, MessageAttachment, OnChatMetadata, OnInboundMessage, OutboundMedia, RegisteredGroup } from '../types.js';
 
 /**
  * Converts markdown-formatted text to Telegram HTML subset.
@@ -144,10 +133,7 @@ export class TelegramChannel implements Channel {
     this.bot = new Bot(this.botToken);
 
     // Model switching commands
-    const handleModelCommand = (
-      alias: string,
-      displayName: string,
-    ): ((ctx: any) => void) => {
+    const handleModelCommand = (alias: string, displayName: string): ((ctx: any) => void) => {
       return (ctx) => {
         const chatJid = `tg:${ctx.chat.id}`;
         const group = this.opts.registeredGroups()[chatJid];
@@ -178,15 +164,9 @@ export class TelegramChannel implements Channel {
     this.bot.command('chatid', (ctx) => {
       const chatId = ctx.chat.id;
       const chatType = ctx.chat.type;
-      const chatName =
-        chatType === 'private'
-          ? ctx.from?.first_name || 'Private'
-          : (ctx.chat as any).title || 'Unknown';
+      const chatName = chatType === 'private' ? ctx.from?.first_name || 'Private' : (ctx.chat as any).title || 'Unknown';
 
-      ctx.reply(
-        `Chat ID: \`tg:${chatId}\`\nName: ${chatName}\nType: ${chatType}`,
-        { parse_mode: 'Markdown' },
-      );
+      ctx.reply(`Chat ID: \`tg:${chatId}\`\nName: ${chatName}\nType: ${chatType}`, { parse_mode: 'Markdown' });
     });
 
     // Command to check bot status
@@ -207,19 +187,12 @@ export class TelegramChannel implements Channel {
 
       let content = ctx.message.text;
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
-      const senderName =
-        ctx.from?.first_name ||
-        ctx.from?.username ||
-        ctx.from?.id.toString() ||
-        'Unknown';
+      const senderName = ctx.from?.first_name || ctx.from?.username || ctx.from?.id.toString() || 'Unknown';
       const sender = ctx.from?.id.toString() || '';
       const msgId = ctx.message.message_id.toString();
 
       // Determine chat name
-      const chatName =
-        ctx.chat.type === 'private'
-          ? senderName
-          : (ctx.chat as any).title || chatJid;
+      const chatName = ctx.chat.type === 'private' ? senderName : (ctx.chat as any).title || chatJid;
 
       // Translate Telegram @bot_username mentions into TRIGGER_PATTERN format.
       // Telegram @mentions (e.g., @andy_ai_bot) won't match TRIGGER_PATTERN
@@ -230,9 +203,7 @@ export class TelegramChannel implements Channel {
         const entities = ctx.message.entities || [];
         const isBotMentioned = entities.some((entity) => {
           if (entity.type === 'mention') {
-            const mentionText = content
-              .substring(entity.offset, entity.offset + entity.length)
-              .toLowerCase();
+            const mentionText = content.substring(entity.offset, entity.offset + entity.length).toLowerCase();
 
             return mentionText === `@${botUsername}`;
           }
@@ -246,25 +217,15 @@ export class TelegramChannel implements Channel {
       }
 
       // Store chat metadata for discovery
-      const isGroup =
-        ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+      const isGroup = ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
 
-      this.opts.onChatMetadata(
-        chatJid,
-        timestamp,
-        chatName,
-        'telegram',
-        isGroup,
-      );
+      this.opts.onChatMetadata(chatJid, timestamp, chatName, 'telegram', isGroup);
 
       // Only deliver full message for registered groups
       const group = this.opts.registeredGroups()[chatJid];
 
       if (!group) {
-        logger.debug(
-          { chatJid, chatName },
-          'Message from unregistered Telegram chat',
-        );
+        logger.debug({ chatJid, chatName }, 'Message from unregistered Telegram chat');
 
         return;
       }
@@ -280,10 +241,7 @@ export class TelegramChannel implements Channel {
         is_from_me: false,
       });
 
-      logger.info(
-        { chatJid, chatName, sender: senderName },
-        'Telegram message stored',
-      );
+      logger.info({ chatJid, chatName, sender: senderName }, 'Telegram message stored');
     });
 
     // Handle non-text messages with placeholders so the agent knows something was sent
@@ -294,23 +252,12 @@ export class TelegramChannel implements Channel {
       if (!group) return;
 
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
-      const senderName =
-        ctx.from?.first_name ||
-        ctx.from?.username ||
-        ctx.from?.id?.toString() ||
-        'Unknown';
+      const senderName = ctx.from?.first_name || ctx.from?.username || ctx.from?.id?.toString() || 'Unknown';
       const caption = ctx.message.caption ? ` ${ctx.message.caption}` : '';
 
-      const isGroup =
-        ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+      const isGroup = ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
 
-      this.opts.onChatMetadata(
-        chatJid,
-        timestamp,
-        undefined,
-        'telegram',
-        isGroup,
-      );
+      this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
       this.opts.onMessage(chatJid, {
         id: ctx.message.message_id.toString(),
         chat_jid: chatJid,
@@ -329,24 +276,13 @@ export class TelegramChannel implements Channel {
       if (!group) return;
 
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
-      const senderName =
-        ctx.from?.first_name ||
-        ctx.from?.username ||
-        ctx.from?.id?.toString() ||
-        'Unknown';
+      const senderName = ctx.from?.first_name || ctx.from?.username || ctx.from?.id?.toString() || 'Unknown';
       const caption = ctx.message.caption ? ` ${ctx.message.caption}` : '';
       const content = `[Photo]${caption}`;
 
-      const isGroup =
-        ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+      const isGroup = ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
 
-      this.opts.onChatMetadata(
-        chatJid,
-        timestamp,
-        undefined,
-        'telegram',
-        isGroup,
-      );
+      this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
 
       let attachments: MessageAttachment[] | undefined;
 
@@ -358,10 +294,7 @@ export class TelegramChannel implements Channel {
         if (buffer) {
           const ext = 'jpg';
           const savedName = `${Date.now()}-photo.${ext}`;
-          const mediaDir = path.join(
-            resolveGroupFolderPath(group.folder),
-            'media',
-          );
+          const mediaDir = path.join(resolveGroupFolderPath(group.folder), 'media');
 
           fs.mkdirSync(mediaDir, { recursive: true });
           fs.writeFileSync(path.join(mediaDir, savedName), buffer);
@@ -410,24 +343,13 @@ export class TelegramChannel implements Channel {
       if (!group) return;
 
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
-      const senderName =
-        ctx.from?.first_name ||
-        ctx.from?.username ||
-        ctx.from?.id?.toString() ||
-        'Unknown';
+      const senderName = ctx.from?.first_name || ctx.from?.username || ctx.from?.id?.toString() || 'Unknown';
       const caption = ctx.message.caption ? ` ${ctx.message.caption}` : '';
       const content = `[Video]${caption}`;
 
-      const isGroup =
-        ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+      const isGroup = ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
 
-      this.opts.onChatMetadata(
-        chatJid,
-        timestamp,
-        undefined,
-        'telegram',
-        isGroup,
-      );
+      this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
 
       let attachments: MessageAttachment[] | undefined;
       const video = ctx.message.video;
@@ -440,10 +362,7 @@ export class TelegramChannel implements Channel {
           if (buffer) {
             const ext = video.mime_type?.split('/')[1] || 'mp4';
             const savedName = `${Date.now()}-video.${ext}`;
-            const mediaDir = path.join(
-              resolveGroupFolderPath(group.folder),
-              'media',
-            );
+            const mediaDir = path.join(resolveGroupFolderPath(group.folder), 'media');
 
             fs.mkdirSync(mediaDir, { recursive: true });
             fs.writeFileSync(path.join(mediaDir, savedName), buffer);
@@ -478,21 +397,10 @@ export class TelegramChannel implements Channel {
       if (!group) return;
 
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
-      const senderName =
-        ctx.from?.first_name ||
-        ctx.from?.username ||
-        ctx.from?.id?.toString() ||
-        'Unknown';
-      const isGroup =
-        ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+      const senderName = ctx.from?.first_name || ctx.from?.username || ctx.from?.id?.toString() || 'Unknown';
+      const isGroup = ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
 
-      this.opts.onChatMetadata(
-        chatJid,
-        timestamp,
-        undefined,
-        'telegram',
-        isGroup,
-      );
+      this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
 
       let content = '[Voice message]';
 
@@ -535,26 +443,15 @@ export class TelegramChannel implements Channel {
       if (!group) return;
 
       const timestamp = new Date(ctx.message.date * 1000).toISOString();
-      const senderName =
-        ctx.from?.first_name ||
-        ctx.from?.username ||
-        ctx.from?.id?.toString() ||
-        'Unknown';
+      const senderName = ctx.from?.first_name || ctx.from?.username || ctx.from?.id?.toString() || 'Unknown';
       const doc = ctx.message.document;
       const originalName = doc?.file_name || 'file';
       const caption = ctx.message.caption ? ` ${ctx.message.caption}` : '';
       const content = `[Document: ${originalName}]${caption}`;
 
-      const isGroup =
-        ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+      const isGroup = ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
 
-      this.opts.onChatMetadata(
-        chatJid,
-        timestamp,
-        undefined,
-        'telegram',
-        isGroup,
-      );
+      this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
 
       let attachments: MessageAttachment[] | undefined;
       const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -566,25 +463,15 @@ export class TelegramChannel implements Channel {
           if (buffer) {
             const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
             const savedName = `${Date.now()}-${safeName}`;
-            const mediaDir = path.join(
-              resolveGroupFolderPath(group.folder),
-              'media',
-            );
+            const mediaDir = path.join(resolveGroupFolderPath(group.folder), 'media');
 
             fs.mkdirSync(mediaDir, { recursive: true });
             fs.writeFileSync(path.join(mediaDir, savedName), buffer);
 
             // Images sent as documents (uncompressed) get vision support too
             const mime = doc?.mime_type || '';
-            const imageTypes = [
-              'image/jpeg',
-              'image/png',
-              'image/gif',
-              'image/webp',
-            ] as const;
-            const isImage = imageTypes.includes(
-              mime as (typeof imageTypes)[number],
-            );
+            const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
+            const isImage = imageTypes.includes(mime as (typeof imageTypes)[number]);
             const MAX_BASE64_BYTES = 5 * 1024 * 1024;
 
             if (isImage && buffer.length <= MAX_BASE64_BYTES) {
@@ -639,14 +526,9 @@ export class TelegramChannel implements Channel {
     return new Promise<void>((resolve) => {
       this.bot!.start({
         onStart: (botInfo) => {
-          logger.info(
-            { username: botInfo.username, id: botInfo.id },
-            'Telegram bot connected',
-          );
+          logger.info({ username: botInfo.username, id: botInfo.id }, 'Telegram bot connected');
           console.log(`\n  Telegram bot: @${botInfo.username}`);
-          console.log(
-            '  Send /chatid to the bot to get a chat\'s registration ID\n',
-          );
+          console.log("  Send /chatid to the bot to get a chat's registration ID\n");
           resolve();
         },
       });
@@ -671,10 +553,7 @@ export class TelegramChannel implements Channel {
       }
       logger.info({ jid, length: text.length }, 'Telegram message sent');
     } catch (err) {
-      logger.error(
-        { jid, err },
-        'Failed to send Telegram message as HTML, retrying as plain text',
-      );
+      logger.error({ jid, err }, 'Failed to send Telegram message as HTML, retrying as plain text');
 
       try {
         for (const chunk of chunkHtml(text, MAX_LENGTH)) {
@@ -773,10 +652,7 @@ export class TelegramChannel implements Channel {
 
     try {
       const numericId = jid.replace(/^tg:/, '');
-      const file = new InputFile(
-        createReadStream(media.path),
-        media.filename ?? path.basename(media.path),
-      );
+      const file = new InputFile(createReadStream(media.path), media.filename ?? path.basename(media.path));
       const opts = media.caption ? { caption: media.caption } : {};
 
       switch (media.kind) {

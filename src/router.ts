@@ -3,25 +3,18 @@ import { Channel, MessageAttachment, NewMessage } from './types.js';
 export function escapeXml(s: string): string {
   if (!s) return '';
 
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 export function formatMessages(messages: NewMessage[]): string {
   const lines = messages.map(
-    (m) =>
-      `<message sender="${escapeXml(m.sender_name)}" time="${m.timestamp}">${escapeXml(m.content)}</message>`,
+    (m) => `<message sender="${escapeXml(m.sender_name)}" time="${m.timestamp}">${escapeXml(m.content)}</message>`,
   );
 
   return `<messages>\n${lines.join('\n')}\n</messages>`;
 }
 
-export function extractAttachments(
-  messages: NewMessage[],
-): MessageAttachment[] {
+export function extractAttachments(messages: NewMessage[]): MessageAttachment[] {
   return messages.flatMap((m) => m.attachments || []);
 }
 
@@ -37,11 +30,7 @@ export function formatOutbound(rawText: string): string {
   return text;
 }
 
-export function routeOutbound(
-  channels: Channel[],
-  jid: string,
-  text: string,
-): Promise<void> {
+export function routeOutbound(channels: Channel[], jid: string, text: string): Promise<void> {
   const channel = channels.find((c) => c.ownsJid(jid) && c.isConnected());
 
   if (!channel) throw new Error(`No channel for JID: ${jid}`);
@@ -49,9 +38,6 @@ export function routeOutbound(
   return channel.sendMessage(jid, text);
 }
 
-export function findChannel(
-  channels: Channel[],
-  jid: string,
-): Channel | undefined {
+export function findChannel(channels: Channel[], jid: string): Channel | undefined {
   return channels.find((c) => c.ownsJid(jid));
 }

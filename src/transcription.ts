@@ -21,10 +21,7 @@ function getClient(): OpenAI | null {
   return client;
 }
 
-export async function transcribeAudio(
-  buffer: Buffer,
-  filename = 'voice.ogg',
-): Promise<string | null> {
+export async function transcribeAudio(buffer: Buffer, filename = 'voice.ogg'): Promise<string | null> {
   const openai = getClient();
 
   if (!openai) return null;

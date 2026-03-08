@@ -1,12 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { ASSISTANT_NAME, TRIGGER_PATTERN } from './config.js';
-import {
-  escapeXml,
-  formatMessages,
-  formatOutbound,
-  stripInternalTags,
-} from './router.js';
+import { escapeXml, formatMessages, formatOutbound, stripInternalTags } from './router.js';
 import { NewMessage } from './types.js';
 
 function makeMsg(overrides: Partial<NewMessage> = {}): NewMessage {
@@ -41,9 +36,7 @@ describe('escapeXml', () => {
   });
 
   it('handles multiple special characters together', () => {
-    expect(escapeXml('a & b < c > d "e"')).toBe(
-      'a &amp; b &lt; c &gt; d &quot;e&quot;',
-    );
+    expect(escapeXml('a & b < c > d "e"')).toBe('a &amp; b &lt; c &gt; d &quot;e&quot;');
   });
 
   it('passes through strings with no special chars', () => {
@@ -61,11 +54,7 @@ describe('formatMessages', () => {
   it('formats a single message as XML', () => {
     const result = formatMessages([makeMsg()]);
 
-    expect(result).toBe(
-      '<messages>\n' +
-        '<message sender="Alice" time="2024-01-01T00:00:00.000Z">hello</message>\n' +
-        '</messages>',
-    );
+    expect(result).toBe('<messages>\n' + '<message sender="Alice" time="2024-01-01T00:00:00.000Z">hello</message>\n' + '</messages>');
   });
 
   it('formats multiple messages', () => {
@@ -93,13 +82,9 @@ describe('formatMessages', () => {
   });
 
   it('escapes special characters in content', () => {
-    const result = formatMessages([
-      makeMsg({ content: '<script>alert("xss")</script>' }),
-    ]);
+    const result = formatMessages([makeMsg({ content: '<script>alert("xss")</script>' })]);
 
-    expect(result).toContain(
-      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;',
-    );
+    expect(result).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
   });
 
   it('handles empty array', () => {
@@ -151,21 +136,15 @@ describe('TRIGGER_PATTERN', () => {
 
 describe('stripInternalTags', () => {
   it('strips single-line internal tags', () => {
-    expect(stripInternalTags('hello <internal>secret</internal> world')).toBe(
-      'hello  world',
-    );
+    expect(stripInternalTags('hello <internal>secret</internal> world')).toBe('hello  world');
   });
 
   it('strips multi-line internal tags', () => {
-    expect(
-      stripInternalTags('hello <internal>\nsecret\nstuff\n</internal> world'),
-    ).toBe('hello  world');
+    expect(stripInternalTags('hello <internal>\nsecret\nstuff\n</internal> world')).toBe('hello  world');
   });
 
   it('strips multiple internal tag blocks', () => {
-    expect(
-      stripInternalTags('<internal>a</internal>hello<internal>b</internal>'),
-    ).toBe('hello');
+    expect(stripInternalTags('<internal>a</internal>hello<internal>b</internal>')).toBe('hello');
   });
 
   it('returns empty string when text is only internal tags', () => {
@@ -183,9 +162,7 @@ describe('formatOutbound', () => {
   });
 
   it('strips internal tags from remaining text', () => {
-    expect(
-      formatOutbound('<internal>thinking</internal>The answer is 42'),
-    ).toBe('The answer is 42');
+    expect(formatOutbound('<internal>thinking</internal>The answer is 42')).toBe('The answer is 42');
   });
 });
 
@@ -194,18 +171,11 @@ describe('formatOutbound', () => {
 describe('trigger gating (requiresTrigger interaction)', () => {
   // Replicates the exact logic from processGroupMessages and startMessageLoop:
   //   if (!isMainGroup && group.requiresTrigger !== false) { check trigger }
-  function shouldRequireTrigger(
-    isMainGroup: boolean,
-    requiresTrigger: boolean | undefined,
-  ): boolean {
+  function shouldRequireTrigger(isMainGroup: boolean, requiresTrigger: boolean | undefined): boolean {
     return !isMainGroup && requiresTrigger !== false;
   }
 
-  function shouldProcess(
-    isMainGroup: boolean,
-    requiresTrigger: boolean | undefined,
-    messages: NewMessage[],
-  ): boolean {
+  function shouldProcess(isMainGroup: boolean, requiresTrigger: boolean | undefined, messages: NewMessage[]): boolean {
     if (!shouldRequireTrigger(isMainGroup, requiresTrigger)) return true;
 
     return messages.some((m) => TRIGGER_PATTERN.test(m.content.trim()));

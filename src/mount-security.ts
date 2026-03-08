@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- TODO: refactor — extract validator helpers, use shared logger, add tests */
 /**
  * Mount Security Module for NanoClaw
  *
@@ -67,8 +68,7 @@ export function loadMountAllowlist(): MountAllowlist | null {
       allowlistLoadError = `Mount allowlist not found at ${MOUNT_ALLOWLIST_PATH}`;
       logger.warn(
         { path: MOUNT_ALLOWLIST_PATH },
-        'Mount allowlist not found - additional mounts will be BLOCKED. ' +
-          'Create the file to enable additional mounts.',
+        'Mount allowlist not found - additional mounts will be BLOCKED. ' + 'Create the file to enable additional mounts.',
       );
 
       return null;
@@ -91,9 +91,7 @@ export function loadMountAllowlist(): MountAllowlist | null {
     }
 
     // Merge with default blocked patterns
-    const mergedBlockedPatterns = [
-      ...new Set([...DEFAULT_BLOCKED_PATTERNS, ...allowlist.blockedPatterns]),
-    ];
+    const mergedBlockedPatterns = [...new Set([...DEFAULT_BLOCKED_PATTERNS, ...allowlist.blockedPatterns])];
 
     allowlist.blockedPatterns = mergedBlockedPatterns;
 
@@ -154,10 +152,7 @@ function getRealPath(p: string): string | null {
 /**
  * Check if a path matches any blocked pattern
  */
-function matchesBlockedPattern(
-  realPath: string,
-  blockedPatterns: string[],
-): string | null {
+function matchesBlockedPattern(realPath: string, blockedPatterns: string[]): string | null {
   const pathParts = realPath.split(path.sep);
 
   for (const pattern of blockedPatterns) {
@@ -180,10 +175,7 @@ function matchesBlockedPattern(
 /**
  * Check if a real path is under an allowed root
  */
-function findAllowedRoot(
-  realPath: string,
-  allowedRoots: AllowedRoot[],
-): AllowedRoot | null {
+function findAllowedRoot(realPath: string, allowedRoots: AllowedRoot[]): AllowedRoot | null {
   for (const root of allowedRoots) {
     const expandedRoot = expandPath(root.path);
     const realRoot = getRealPath(expandedRoot);
@@ -238,10 +230,7 @@ export interface MountValidationResult {
  * Validate a single additional mount against the allowlist.
  * Returns validation result with reason.
  */
-export function validateMount(
-  mount: AdditionalMount,
-  isMain: boolean,
-): MountValidationResult {
+export function validateMount(mount: AdditionalMount, isMain: boolean): MountValidationResult {
   const allowlist = loadMountAllowlist();
 
   // If no allowlist, block all additional mounts
@@ -275,10 +264,7 @@ export function validateMount(
   }
 
   // Check against blocked patterns
-  const blockedMatch = matchesBlockedPattern(
-    realPath,
-    allowlist.blockedPatterns,
-  );
+  const blockedMatch = matchesBlockedPattern(realPath, allowlist.blockedPatterns);
 
   if (blockedMatch !== null) {
     return {

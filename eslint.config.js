@@ -98,6 +98,9 @@ export default tseslint.config(
           },
         },
       ],
+      'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': ['warn', { max: 80, skipBlankLines: true, skipComments: true, IIFEs: true }],
+      '@typescript-eslint/no-floating-promises': 'error',
     },
   },
   {
@@ -119,6 +122,8 @@ export default tseslint.config(
       'no-magic-numbers': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
+      'max-lines': 'off',
+      'max-lines-per-function': 'off',
     },
   },
 );
