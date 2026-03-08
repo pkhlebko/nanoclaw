@@ -59,6 +59,11 @@ After modifying source files or tests, always run: `npm run fix && npm run lint`
 - If logic is repeated in 2+ places → extract a shared utility
 - Duplicate SQL → single function. Three identical media handlers → one `handleMediaMessage`. Double nextRun calculation → one `computeNextRun` utility
 
+### Documentation
+- All exported functions, classes, and constants must have a TSDoc comment (`/** ... */`)
+- Minimum: one-line summary. Add `@param` / `@returns` when the signature alone isn't self-explanatory
+- Internal (non-exported) helpers do not require TSDoc
+
 ### Async
 - Never fire-and-forget: always `await` or chain `.catch()` (lint error: `no-floating-promises`)
 
