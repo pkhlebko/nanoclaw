@@ -12,6 +12,9 @@ vi.mock('../config.js', () => ({
     haiku: 'claude-haiku-4-5-20251001',
   },
   MODEL_OVERRIDE_TIMEOUT: 1800000,
+  TELEGRAM_MAX_MESSAGE_LENGTH: 4096,
+  TELEGRAM_MAX_IMAGE_BYTES: 5 * 1024 * 1024,
+  TELEGRAM_MAX_FILE_BYTES: 20 * 1024 * 1024,
 }));
 
 // Mock logger
