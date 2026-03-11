@@ -51,7 +51,7 @@ async function main(): Promise<void> {
   logger.info('Database initialized');
   loadState(state);
 
-  const shutdown = async (signal: string) => {
+  const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Shutdown signal received');
     await queue.shutdown(SHUTDOWN_TIMEOUT_MS);
     for (const ch of channels) await ch.disconnect();
@@ -62,7 +62,7 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => shutdown('SIGINT'));
 
   const channelOpts = {
-    onMessage: (_chatJid: string, msg: NewMessage) => {
+    onMessage: (_chatJid: string, msg: NewMessage): void => {
       storeMessage(msg);
 
       if (msg.attachments?.length) {
@@ -76,9 +76,9 @@ async function main(): Promise<void> {
         state.pendingAttachments.set(msg.chat_jid, existing);
       }
     },
-    onChatMetadata: (chatJid: string, timestamp: string, name?: string, channel?: string, isGroup?: boolean) =>
+    onChatMetadata: (chatJid: string, timestamp: string, name?: string, channel?: string, isGroup?: boolean): void =>
       storeChatMetadata(chatJid, timestamp, name, channel, isGroup),
-    registeredGroups: () => state.registeredGroups,
+    registeredGroups: (): Record<string, RegisteredGroup> => state.registeredGroups,
   };
 
   if (TELEGRAM_BOT_TOKEN) {

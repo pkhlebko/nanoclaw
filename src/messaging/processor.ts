@@ -1,5 +1,13 @@
 import { AppState, saveState } from '../app-state.js';
-import { ASSISTANT_NAME, DEFAULT_MODEL, IDLE_TIMEOUT, MAIN_GROUP_FOLDER, MODEL_ALIAS_MAP, MODEL_FLAG_REGEX } from '../config.js';
+import {
+  ASSISTANT_NAME,
+  DEFAULT_MODEL,
+  IDLE_TIMEOUT,
+  LOG_PREVIEW_LENGTH,
+  MAIN_GROUP_FOLDER,
+  MODEL_ALIAS_MAP,
+  MODEL_FLAG_REGEX,
+} from '../config.js';
 import { ContainerOutput, runContainerAgent } from '../container/runner.js';
 import { getMessagesSince } from '../db/messages.js';
 import { setSession } from '../db/sessions.js';
@@ -55,7 +63,7 @@ function setupIdleTimer(group: RegisteredGroup, queue: GroupQueue, chatJid: stri
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   return {
-    reset: () => {
+    reset: (): void => {
       if (timer) clearTimeout(timer);
 
       timer = setTimeout(() => {
@@ -63,7 +71,7 @@ function setupIdleTimer(group: RegisteredGroup, queue: GroupQueue, chatJid: stri
         queue.closeStdin(chatJid);
       }, IDLE_TIMEOUT);
     },
-    clear: () => {
+    clear: (): void => {
       if (timer) clearTimeout(timer);
     },
   };
@@ -83,7 +91,7 @@ function createOutputHandler(
       const raw = typeof output.result === 'string' ? output.result : JSON.stringify(output.result);
       const text = stripInternalTags(raw);
 
-      logger.info({ group: group.name }, `Agent output: ${raw.slice(0, 200)}`);
+      logger.info({ group: group.name }, `Agent output: ${raw.slice(0, LOG_PREVIEW_LENGTH)}`);
 
       if (text) {
         await channel.sendMessage(chatJid, text);
@@ -133,15 +141,12 @@ export async function runAgent(
 
   writeGroupsSnapshot(group.folder, isMain, opts.getAvailableGroups());
 
-  const wrappedOnOutput = opts.onOutput
-    ? async (output: ContainerOutput) => {
-        if (output.newSessionId) {
-          updateSession(group.folder, output.newSessionId, state);
-        }
+  const genOnOutput = async (output: ContainerOutput): Promise<void> => {
+    if (output.newSessionId) updateSession(group.folder, output.newSessionId, state);
 
-        await opts.onOutput!(output);
-      }
-    : undefined;
+    await opts.onOutput!(output);
+  };
+  const wrappedOnOutput = opts.onOutput ? genOnOutput : undefined;
 
   try {
     const output = await runContainerAgent(
