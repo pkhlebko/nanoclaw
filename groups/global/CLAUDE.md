@@ -41,6 +41,10 @@ When working as a sub-agent or teammate, only use `send_message` if instructed t
 
 Files you create are saved in `/workspace/group/`. Use this for notes, research, or anything that should persist.
 
+## Generated Files (OneDrive sync)
+
+The directory `/workspace/extra/ai-generated` is available for saving files that should be kept and synced to the user's OneDrive. Use it for presentations, documents, reports, and other deliverables you generate. Files saved here persist across sessions.
+
 ## Memory
 
 The `conversations/` folder contains searchable history of past conversations. Use this to recall context from previous sessions.
