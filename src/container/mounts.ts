@@ -152,6 +152,26 @@ export function buildContainerArgs(mounts: VolumeMount[], containerName: string)
 
   if (haEnv.HA_TOKEN) args.push('-e', `HA_TOKEN=${haEnv.HA_TOKEN}`);
 
+  // Pass Rutracker credentials if configured
+  const rtEnv = readEnvFile(['RUTRACKER_USER', 'RUTRACKER_PASS', 'RUTRACKER_PROXY']);
+
+  if (rtEnv.RUTRACKER_USER) args.push('-e', `RUTRACKER_USER=${rtEnv.RUTRACKER_USER}`);
+
+  if (rtEnv.RUTRACKER_PASS) args.push('-e', `RUTRACKER_PASS=${rtEnv.RUTRACKER_PASS}`);
+
+  if (rtEnv.RUTRACKER_PROXY) args.push('-e', `RUTRACKER_PROXY=${rtEnv.RUTRACKER_PROXY}`);
+
+  // Pass Transmission host if configured
+  const trEnv = readEnvFile(['TRANSMISSION_HOST', 'TRANSMISSION_PORT', 'TRANSMISSION_USER', 'TRANSMISSION_PASS']);
+
+  if (trEnv.TRANSMISSION_HOST) args.push('-e', `TRANSMISSION_HOST=${trEnv.TRANSMISSION_HOST}`);
+
+  if (trEnv.TRANSMISSION_PORT) args.push('-e', `TRANSMISSION_PORT=${trEnv.TRANSMISSION_PORT}`);
+
+  if (trEnv.TRANSMISSION_USER) args.push('-e', `TRANSMISSION_USER=${trEnv.TRANSMISSION_USER}`);
+
+  if (trEnv.TRANSMISSION_PASS) args.push('-e', `TRANSMISSION_PASS=${trEnv.TRANSMISSION_PASS}`);
+
   // Run as host user so bind-mounted files are accessible.
   // Skip when running as root (uid 0), as the container's node user (uid 1000),
   // or when getuid is unavailable (native Windows without WSL).
